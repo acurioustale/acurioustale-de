@@ -53,10 +53,10 @@ test("clicking keeps the two theme-color metas in sync", async () => {
     prefersLight: false,
   });
   const light = document.querySelector(
-    'meta[name="theme-color"][content="#e8e6df"]',
+    'meta[name="theme-color"][data-scheme="light"]',
   );
   const dark = document.querySelector(
-    'meta[name="theme-color"][content="#0e0f10"]',
+    'meta[name="theme-color"][data-scheme="dark"]',
   );
   const btn = document.querySelector(".theme-toggle");
 
