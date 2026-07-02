@@ -21,13 +21,25 @@ const htaccess = await readFile(
   "utf8",
 );
 
-// The <meta> CSP. Matches attribute regardless of order between http-equiv and content.
+// The <meta> CSP. Matches attribute regardless of order between http-equiv and
+// content. A match inside an HTML comment (a documented sample, or an old
+// policy kept for reference) is skipped and the first live match wins —
+// mirroring the comment-skipping and first-match discipline the .htaccess
+// parser below applies to `#` lines, so the two sides can't drift in how they
+// pick a policy. Comment membership is decided by position — the nearest `<!--`
+// before the tag is still open (no intervening `-->`) — rather than by stripping
+// comments out, which a single regex pass can't do safely for nested markers.
 let metaCsp;
-for (const [tag] of html.matchAll(
+for (const meta of html.matchAll(
   /<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi,
 )) {
-  const match = tag.match(/content=(["'])([\s\S]*?)\1/i);
-  if (match) metaCsp = match[2];
+  const before = html.slice(0, meta.index);
+  if (before.lastIndexOf("<!--") > before.lastIndexOf("-->")) continue;
+  const match = meta[0].match(/content=(["'])([\s\S]*?)\1/i);
+  if (match) {
+    metaCsp = match[2];
+    break;
+  }
 }
 
 // The header CSP: the `Header [always] set Content-Security-Policy "..."`
