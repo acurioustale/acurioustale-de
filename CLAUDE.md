@@ -120,7 +120,11 @@ Keep these consistent: the `localStorage` key is `"theme"` with values
 attribute on `<html>`. The two `<meta name="theme-color">` values (one per
 `prefers-color-scheme`) must equal the CSS `--page-bg` light/dark sides;
 `test/themeColor.test.js` enforces that so the browser chrome can't drift from
-the page background. `theme-toggle.js` also locates those two metas by hardcoding
+the page background. The web app manifest's `background_color`/`theme_color`
+likewise track the dark `--page-bg` side (a manifest carries a single colour, so
+the site picks dark); `test/manifestColor.test.js` binds them so the
+installed-app chrome and splash can't drift from the page either.
+`theme-toggle.js` also locates those two metas by hardcoding
 their exact `content=` hex into its `querySelector` calls; `test/themeToggleMeta.test.js`
 binds those selectors back to the metas so renaming the palette can't silently
 break the toggle's chrome-tint sync (the guarded lookup would otherwise just skip
@@ -153,7 +157,8 @@ history-recall arithmetic and the width-change re-freeze guard lifted out of the
 event handlers) — and exercised
 by `test/theme.test.js`, `test/commands.test.js`,
 `test/terminalUi.test.js`, `test/themeColor.test.js`,
-`test/themeFallback.test.js` and `test/themeGuard.test.js`. On top of those
+`test/manifestColor.test.js`, `test/themeFallback.test.js` and
+`test/themeGuard.test.js`. On top of those
 example-based tests, `test/properties.test.js` asserts the invariants across the
 whole input space with `fast-check` — `nextTheme` is a closed three-way cycle,
 `formatUptime` never goes negative and round-trips to elapsed minutes,
