@@ -197,8 +197,9 @@ so `test/**` is re-excluded explicitly alongside the two modules.
 The page sends a strict Content-Security-Policy **twice**: a `<meta http-equiv>`
 tag in `index.html` and an HTTP header in `.htaccess`. Both are `default-src
 'none'` with `script-src 'self'` (the `js/` modules) plus a single `'sha256-…'`
-for the inline guard, `style-src 'self'`, `img-src 'self'`, and
-`base-uri`/`form-action 'none'`. The `.htaccess` header is the production
+for the inline guard, `style-src 'self'`, `img-src 'self'`, `manifest-src
+'self'`, and `base-uri`/`form-action 'none'`. The `.htaccess` header is the
+production
 superset — it adds `frame-ancestors 'none'` and `upgrade-insecure-requests`,
 which a meta CSP can't express — while the meta stays as the baseline the python
 dev server actually applies (so CSP is testable locally). Three consequences when

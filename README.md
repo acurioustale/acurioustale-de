@@ -15,8 +15,9 @@ interactive guest-shell easter egg: a handful of commands work —
 `ls projects/` reprint the boot output), `uptime`, `date` and `echo` behave like
 their shell namesakes, `sudo` earns the classic lecture, `clear` empties the
 screen and `help` lists the commands — and everything else is denied with a
-fitting shell error. The pure logic behind both (the theme cycle, and the command replies and
-help text) is factored into `js/theme.js` and `js/commands.js` and unit-tested in
+fitting shell error. The pure logic behind both (the theme cycle, the command replies and help text,
+and the terminal's scrollback cap, history recall and refit guard) is factored
+into `js/theme.js`, `js/commands.js` and `js/terminal-ui.js` and unit-tested in
 `test/`.
 
 ```text
@@ -81,8 +82,8 @@ from the real `index.html`. The pure-logic layer pairs example-based tests with
 `fast-check` property tests (`test/properties.test.js`) that assert the
 invariants across the whole input space. The `validate.sh` gate runs the same suite through
 `npm run coverage` (`node --test --experimental-test-coverage`), which fails if
-the unit-tested surface drops below the pinned thresholds (lines 98%, branches
-95%, functions 100%); the two DOM-glue modules are excluded from that accounting
+the unit-tested surface drops below the pinned thresholds (lines, branches and
+functions all 100%); the two DOM-glue modules are excluded from that accounting
 because their paint-dependent half is covered by Playwright, not `node --test`.
 Layout- and paint-dependent behaviour jsdom can't model — the frozen screen
 height, the input growing with its content, click-to-focus and the toggle
@@ -256,8 +257,9 @@ themselves: a `Content-Security-Policy`, `Strict-Transport-Security` (HSTS),
 `Permissions-Policy`, the cross-origin isolation trio (`Cross-Origin-Opener-Policy`,
 `Cross-Origin-Embedder-Policy`, `Cross-Origin-Resource-Policy`), and it unsets the
 `Server` banner. The CSP is
-all-same-origin (`default-src 'none'`, `script-src`/`style-src`/`img-src 'self'`)
-with the one inline script — the pre-paint theme guard — allowlisted by its
+all-same-origin (`default-src 'none'`,
+`script-src`/`style-src`/`img-src`/`manifest-src 'self'`) with the one inline
+script — the pre-paint theme guard — allowlisted by its
 `sha256` hash. This header CSP is the production superset of the `<meta>` CSP in
 `index.html`: it adds `frame-ancestors 'none'` and `upgrade-insecure-requests`,
 which a meta tag can't express. The meta stays as the locally-testable baseline
