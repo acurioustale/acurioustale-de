@@ -257,8 +257,9 @@ themselves: a `Content-Security-Policy`, `Strict-Transport-Security` (HSTS),
 `Permissions-Policy`, the cross-origin isolation trio (`Cross-Origin-Opener-Policy`,
 `Cross-Origin-Embedder-Policy`, `Cross-Origin-Resource-Policy`), and it unsets the
 `Server` banner. The CSP is
-all-same-origin (`default-src 'none'`, `script-src`/`style-src`/`img-src 'self'`)
-with the one inline script — the pre-paint theme guard — allowlisted by its
+all-same-origin (`default-src 'none'`,
+`script-src`/`style-src`/`img-src`/`manifest-src 'self'`) with the one inline
+script — the pre-paint theme guard — allowlisted by its
 `sha256` hash. This header CSP is the production superset of the `<meta>` CSP in
 `index.html`: it adds `frame-ancestors 'none'` and `upgrade-insecure-requests`,
 which a meta tag can't express. The meta stays as the locally-testable baseline
