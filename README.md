@@ -27,12 +27,13 @@ help text) is factored into `js/theme.js` and `js/commands.js` and unit-tested i
 ├── test/                ← unit tests (pure logic) + jsdom DOM-wiring tests (node --test)
 ├── e2e/                 ← Playwright browser smoke tests (npm run test:e2e)
 ├── tools/               ← dev-time CI checks (CSP hash, og-image, inline-script extraction)
-├── assets/              ← favicon (SVG + 32px PNG), apple-touch icon, Open Graph share image
+├── assets/              ← favicon (SVG + 32px PNG), apple-touch icon, PWA icons (192/512), Open Graph share image
 ├── ops/                 ← reviewed copy of the server-side rsync deploy jail
 ├── .htaccess            ← Apache security headers + production CSP (deployed)
 ├── robots.txt           ← allow-all crawl rule + sitemap pointer
 ├── sitemap.xml          ← single-page sitemap
 ├── humans.txt           ← the people behind the site (linked via rel="author")
+├── manifest.webmanifest ← PWA web app manifest (name, icons, theme colour)
 ├── og-image.src.svg     ← editable source for assets/og-image.png (not deployed)
 ├── lychee.toml          ← link-checker config (used by the links workflow)
 ├── CLAUDE.md            ← guidance for AI coding assistants
@@ -140,7 +141,8 @@ Link checking runs separately (see Development) so flaky external hosts never
 block a deploy.
 
 `deploy.sh` copies the deploy set — `index.html`, `.htaccess`, `robots.txt`,
-`sitemap.xml`, `humans.txt`, `css/`, `js/` and `assets/` — into a temporary
+`sitemap.xml`, `humans.txt`, `manifest.webmanifest`, `css/`, `js/` and
+`assets/` — into a temporary
 staging directory, stamps the current Unix-millisecond time into `LAST_DEPLOY` in
 the staged `js/commands.js` (so the terminal's `uptime` counts from the live
 deploy), then mirrors the staging directory to the web root on the host with
