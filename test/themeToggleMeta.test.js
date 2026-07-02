@@ -7,8 +7,9 @@ import { fileURLToPath } from "node:url";
 // data-scheme attribute ("light"/"dark"), then keeps each tag's `media` attribute
 // in sync as the toggle forces a scheme. Those selectors must match metas that
 // index.html actually declares: rename or drop the attribute on one side and
-// querySelector returns null, the `if (lightMeta && darkMeta)` guard silently
-// skips the tint update, and nothing else notices — no error, no failing test.
+// querySelector returns null, the guarded per-meta `if (lightMeta)` lookup
+// silently skips that meta's tint update, and nothing else notices — no error,
+// no failing test.
 // This binds the selectors back to the metas so that drift fails the build. The
 // inline pre-paint guard in index.html uses the same data-scheme lookup;
 // test/themeGuard.test.js binds its copy to the shipping markup.

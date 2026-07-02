@@ -124,11 +124,12 @@ the page background. The web app manifest's `background_color`/`theme_color`
 likewise track the dark `--page-bg` side (a manifest carries a single colour, so
 the site picks dark); `test/manifestColor.test.js` binds them so the
 installed-app chrome and splash can't drift from the page either.
-`theme-toggle.js` also locates those two metas by hardcoding
-their exact `content=` hex into its `querySelector` calls; `test/themeToggleMeta.test.js`
-binds those selectors back to the metas so renaming the palette can't silently
-break the toggle's chrome-tint sync (the guarded lookup would otherwise just skip
-the update). `test/themeGuard.test.js` verifies the inline pre-paint
+`theme-toggle.js` locates those two metas by their stable `data-scheme`
+attribute (`meta[name="theme-color"][data-scheme="light"|"dark"]`), not by their
+palette hex, so nothing there couples to the colours; `test/themeToggleMeta.test.js`
+binds those selectors back to the metas so renaming a `data-scheme` value or
+dropping a meta can't silently break the toggle's chrome-tint sync (the guarded
+per-meta lookup would otherwise just skip that meta's update). `test/themeGuard.test.js` verifies the inline pre-paint
 guard stays consistent with the module-based `normalizeMode()` by extracting and
 evaluating the inline scripts (via `tools/inline-scripts.mjs`).
 
