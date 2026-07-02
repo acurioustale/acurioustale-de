@@ -12,7 +12,7 @@
          frame-ancestors is ignored in a meta CSP and is set at the host. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'sha256-mQyxmCkffNY1qWZcVev54rHHZpFCJDGQNPiJrUFR0/0='; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'"
+      content="default-src 'none'; script-src 'self' 'sha256-0XS6fJmnW2SNoCoGcMrWZGB5K3ez/ROTYOgIPlaczfY='; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'"
     />
 
     <title>Markus Spitzner — me@acurioustale.de</title>
@@ -116,16 +116,19 @@
           const t = localStorage.getItem("theme");
           if (t === "light" || t === "dark") {
             document.documentElement.setAttribute("data-theme", t);
+            // Sync each meta independently so a missing or renamed one can't
+            // stop the other from tracking the forced scheme (matches setScheme
+            // in theme-toggle.js).
             const light = document.querySelector(
               'meta[name="theme-color"][data-scheme="light"]',
             );
             const dark = document.querySelector(
               'meta[name="theme-color"][data-scheme="dark"]',
             );
-            if (light && dark) {
+            if (light)
               light.setAttribute("media", t === "light" ? "all" : "not all");
+            if (dark)
               dark.setAttribute("media", t === "dark" ? "all" : "not all");
-            }
           }
         } catch {}
       })();

@@ -32,17 +32,18 @@ if (bar) {
     if (to === "auto") root.removeAttribute("data-theme");
     else root.setAttribute("data-theme", to);
 
+    // Sync each meta independently: a missing or renamed one must not stop the
+    // other from tracking the forced scheme (a combined `light && dark` guard
+    // would skip both and silently desync the chrome tint from the page).
+    const media = metaMediaFor(to);
     const lightMeta = document.querySelector(
       'meta[name="theme-color"][data-scheme="light"]',
     );
     const darkMeta = document.querySelector(
       'meta[name="theme-color"][data-scheme="dark"]',
     );
-    if (lightMeta && darkMeta) {
-      const media = metaMediaFor(to);
-      lightMeta.setAttribute("media", media.light);
-      darkMeta.setAttribute("media", media.dark);
-    }
+    if (lightMeta) lightMeta.setAttribute("media", media.light);
+    if (darkMeta) darkMeta.setAttribute("media", media.dark);
   }
 
   // Persist the choice: "auto" clears the override, light/dark store it.
