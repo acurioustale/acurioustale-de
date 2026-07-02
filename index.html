@@ -12,7 +12,7 @@
          frame-ancestors is ignored in a meta CSP and is set at the host. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'sha256-EGdQzZVhEVs25DC0OCkdb3JdhzGFnTzUQuWHMzw6U/U='; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'"
+      content="default-src 'none'; script-src 'self' 'sha256-EGdQzZVhEVs25DC0OCkdb3JdhzGFnTzUQuWHMzw6U/U='; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'"
     />
 
     <title>Markus Spitzner — me@acurioustale.de</title>
@@ -44,6 +44,7 @@
       type="image/png"
     />
     <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
 
     <!-- Open Graph / Twitter link previews. -->
     <meta property="og:type" content="website" />

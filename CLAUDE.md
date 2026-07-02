@@ -225,7 +225,8 @@ editing:
 
 Pushing to `main` auto-deploys via `.github/workflows/deploy.yml`, which runs
 `deploy.sh`. The script copies the deploy set (`index.html`, `.htaccess`,
-`robots.txt`, `sitemap.xml`, `humans.txt`, `css/`, `js/` and `assets/`) into a
+`robots.txt`, `sitemap.xml`, `humans.txt`, `manifest.webmanifest`, `css/`, `js/`
+and `assets/`) into a
 temporary staging directory, stamps the current Unix-millisecond time into
 `LAST_DEPLOY` in the **staged** `js/commands.js` (so the terminal's `uptime`
 counts from the live deploy), then mirrors the staging directory to the host with

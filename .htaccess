@@ -22,7 +22,7 @@
   # the inline-script hash matches in BOTH places, so they can't drift.
   # IMPORTANT: the hash is over the inline script's exact bytes — edit that script
   # and you must recompute it here and in index.html (check-csp.mjs prints it).
-  Header always set Content-Security-Policy "default-src 'none'; script-src 'self' 'sha256-EGdQzZVhEVs25DC0OCkdb3JdhzGFnTzUQuWHMzw6U/U='; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
+  Header always set Content-Security-Policy "default-src 'none'; script-src 'self' 'sha256-EGdQzZVhEVs25DC0OCkdb3JdhzGFnTzUQuWHMzw6U/U='; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
 
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
   Header always set X-Content-Type-Options "nosniff"
@@ -41,7 +41,7 @@
   <FilesMatch "\.(png|svg|ico|jpg|jpeg|webp|gif)$">
     Header set Cache-Control "public, max-age=2592000"
   </FilesMatch>
-  <FilesMatch "\.(html|css|js)$">
+  <FilesMatch "\.(html|css|js|webmanifest)$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
 </IfModule>
@@ -51,14 +51,16 @@
 # doesn't map it by default.
 <IfModule mod_mime.c>
   AddType image/svg+xml .svg
+  # Serve the PWA manifest with its registered type on hosts that don't map it.
+  AddType application/manifest+json .webmanifest
 </IfModule>
 
 # ─── Compression ───────────────────────────────────────────────────────────────
 <IfModule mod_brotli.c>
-  AddOutputFilterByType BROTLI_COMPRESS text/html text/plain text/xml text/css text/javascript application/javascript application/json image/svg+xml
+  AddOutputFilterByType BROTLI_COMPRESS text/html text/plain text/xml text/css text/javascript application/javascript application/json application/manifest+json image/svg+xml
 </IfModule>
 <IfModule mod_deflate.c>
-  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json image/svg+xml
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json application/manifest+json image/svg+xml
 </IfModule>
 
 # ─── Deny sensitive files (defense in depth) ───────────────────────────────────
