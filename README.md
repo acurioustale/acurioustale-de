@@ -15,8 +15,9 @@ interactive guest-shell easter egg: a handful of commands work —
 `ls projects/` reprint the boot output), `uptime`, `date` and `echo` behave like
 their shell namesakes, `sudo` earns the classic lecture, `clear` empties the
 screen and `help` lists the commands — and everything else is denied with a
-fitting shell error. The pure logic behind both (the theme cycle, and the command replies and
-help text) is factored into `js/theme.js` and `js/commands.js` and unit-tested in
+fitting shell error. The pure logic behind both (the theme cycle, the command replies and help text,
+and the terminal's scrollback cap, history recall and refit guard) is factored
+into `js/theme.js`, `js/commands.js` and `js/terminal-ui.js` and unit-tested in
 `test/`.
 
 ```text
