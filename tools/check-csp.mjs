@@ -99,8 +99,25 @@ if (failed) {
   // plus the directives a meta CSP can't express. Strip those header-only
   // directives, then the rest must match exactly, so loosening or dropping a
   // directive in only one file is caught — not just a drifted script hash.
+  const headerDirectives = parseCsp(headerCsp);
+
+  // The header-only directives are excluded from the diff below because a
+  // <meta> CSP can't express them — but excluding them from the comparison
+  // means their absence would otherwise go unnoticed, so assert they are
+  // actually present. Without this, deleting frame-ancestors or
+  // upgrade-insecure-requests from .htaccess would pass the guard, silently
+  // dropping the clickjacking and HTTPS-upgrade protections in production.
+  for (const name of HEADER_ONLY) {
+    if (!headerDirectives.has(name)) {
+      failed = true;
+      console.error(
+        `check-csp: the .htaccess header is missing the required directive: ${name}`,
+      );
+    }
+  }
+
   const headerBaseline = new Map(
-    [...parseCsp(headerCsp)].filter(([name]) => !HEADER_ONLY.has(name)),
+    [...headerDirectives].filter(([name]) => !HEADER_ONLY.has(name)),
   );
   const diffs = directiveDiff(parseCsp(metaCsp), headerBaseline);
   if (diffs.length) {
