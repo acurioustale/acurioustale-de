@@ -81,8 +81,8 @@ from the real `index.html`. The pure-logic layer pairs example-based tests with
 `fast-check` property tests (`test/properties.test.js`) that assert the
 invariants across the whole input space. The `validate.sh` gate runs the same suite through
 `npm run coverage` (`node --test --experimental-test-coverage`), which fails if
-the unit-tested surface drops below the pinned thresholds (lines 98%, branches
-95%, functions 100%); the two DOM-glue modules are excluded from that accounting
+the unit-tested surface drops below the pinned thresholds (lines, branches and
+functions all 100%); the two DOM-glue modules are excluded from that accounting
 because their paint-dependent half is covered by Playwright, not `node --test`.
 Layout- and paint-dependent behaviour jsdom can't model — the frozen screen
 height, the input growing with its content, click-to-focus and the toggle
