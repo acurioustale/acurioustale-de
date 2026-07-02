@@ -80,6 +80,47 @@ function parseCsp(csp) {
 // header is allowed to add exactly these on top of the <meta> baseline.
 const HEADER_ONLY = new Set(["frame-ancestors", "upgrade-insecure-requests"]);
 
+// The JavaScript MIME type essences the browser executes as a classic script
+// (the WHATWG MIME-sniffing set, including the legacy aliases). Compared against
+// the type's essence with parameters stripped, exactly as the browser does.
+const JS_MIME_ESSENCES = new Set([
+  "application/ecmascript",
+  "application/javascript",
+  "application/x-ecmascript",
+  "application/x-javascript",
+  "text/ecmascript",
+  "text/javascript",
+  "text/javascript1.0",
+  "text/javascript1.1",
+  "text/javascript1.2",
+  "text/javascript1.3",
+  "text/javascript1.4",
+  "text/javascript1.5",
+  "text/jscript",
+  "text/livescript",
+  "text/x-ecmascript",
+  "text/x-javascript",
+]);
+
+// Whether the browser would execute an inline <script> with this type attribute
+// value (and so whether it needs a CSP hash). Mirrors "prepare the script
+// element": the browser strips leading/trailing whitespace, then runs the script
+// when the type is absent or empty (classic), an ASCII case-insensitive "module",
+// or a JavaScript MIME type essence match — the type/subtype with any parameters
+// (e.g. "; charset=utf-8") ignored. Anything else is a data block that never
+// executes (e.g. application/ld+json). An exact-string allowlist of
+// "module"/"text-or-application/javascript" is narrower than this, so it would
+// wave through an executable inline script it failed to recognise (a trailing
+// space, a charset parameter, a legacy alias) as if it were inert data.
+function isExecutableJs(rawType) {
+  if (rawType === undefined) return true; // no type attribute → classic JS
+  const type = rawType.trim();
+  if (type === "") return true; // empty type → classic JS
+  if (/^module$/i.test(type)) return true; // module script
+  const essence = type.split(";")[0].trim().toLowerCase();
+  return JS_MIME_ESSENCES.has(essence);
+}
+
 // Human-readable list of directives that differ between two CSP maps (a
 // directive present in only one, or present in both with differing values).
 function directiveDiff(meta, header) {
@@ -149,10 +190,7 @@ if (failed) {
     const type = (attrs.match(/\btype=["']([^"']*)["']/i) || [])[1];
     // Non-JS data blocks (e.g. application/ld+json) are not executed and so are
     // not subject to script-src; only real inline scripts need a hash.
-    const isJs =
-      !type ||
-      /^(module|text\/javascript|application\/javascript)$/i.test(type);
-    if (!isJs) continue;
+    if (!isExecutableJs(type)) continue;
 
     const hash = createHash("sha256").update(body, "utf8").digest("base64");
     const token = `'sha256-${hash}'`;
