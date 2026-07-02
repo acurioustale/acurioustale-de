@@ -93,7 +93,7 @@ test("the inline guard applies an override iff normalizeMode() does, with the sa
 // the browser-chrome tint matches from first paint (theme-toggle.js only fixes
 // this up once it loads). Run the real guard against a DOM built from the
 // shipping index.html and check the actual metas — this also binds the guard's
-// media-based meta selectors to the shipping markup: if either stops matching,
+// data-scheme meta selectors to the shipping markup: if either stops matching,
 // the media would stay on its prefers query and these fail.
 function runGuardInDom(stored) {
   const { window } = new JSDOM(html);
@@ -104,8 +104,8 @@ function runGuardInDom(stored) {
   return window.document;
 }
 
-const lightMeta = 'meta[name="theme-color"][content="#e8e6df"]';
-const darkMeta = 'meta[name="theme-color"][content="#0e0f10"]';
+const lightMeta = 'meta[name="theme-color"][data-scheme="light"]';
+const darkMeta = 'meta[name="theme-color"][data-scheme="dark"]';
 
 test("the inline guard points the theme-color metas at a forced scheme", () => {
   for (const [stored, light, dark] of [

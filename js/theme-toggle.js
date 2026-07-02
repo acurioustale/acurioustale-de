@@ -33,10 +33,10 @@ if (bar) {
     else root.setAttribute("data-theme", to);
 
     const lightMeta = document.querySelector(
-      'meta[name="theme-color"][content="#e8e6df"]',
+      'meta[name="theme-color"][data-scheme="light"]',
     );
     const darkMeta = document.querySelector(
-      'meta[name="theme-color"][content="#0e0f10"]',
+      'meta[name="theme-color"][data-scheme="dark"]',
     );
     if (lightMeta && darkMeta) {
       const media = metaMediaFor(to);

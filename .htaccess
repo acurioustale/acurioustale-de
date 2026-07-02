@@ -22,7 +22,7 @@
   # the inline-script hash matches in BOTH places, so they can't drift.
   # IMPORTANT: the hash is over the inline script's exact bytes — edit that script
   # and you must recompute it here and in index.html (check-csp.mjs prints it).
-  Header always set Content-Security-Policy "default-src 'none'; script-src 'self' 'sha256-EGdQzZVhEVs25DC0OCkdb3JdhzGFnTzUQuWHMzw6U/U='; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
+  Header always set Content-Security-Policy "default-src 'none'; script-src 'self' 'sha256-mQyxmCkffNY1qWZcVev54rHHZpFCJDGQNPiJrUFR0/0='; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; upgrade-insecure-requests"
 
   Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
   Header always set X-Content-Type-Options "nosniff"

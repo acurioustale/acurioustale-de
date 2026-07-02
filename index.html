@@ -12,7 +12,7 @@
          frame-ancestors is ignored in a meta CSP and is set at the host. -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'none'; script-src 'self' 'sha256-EGdQzZVhEVs25DC0OCkdb3JdhzGFnTzUQuWHMzw6U/U='; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'"
+      content="default-src 'none'; script-src 'self' 'sha256-mQyxmCkffNY1qWZcVev54rHHZpFCJDGQNPiJrUFR0/0='; style-src 'self'; img-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'"
     />
 
     <title>Markus Spitzner — me@acurioustale.de</title>
@@ -28,11 +28,13 @@
       name="theme-color"
       content="#0e0f10"
       media="(prefers-color-scheme: dark)"
+      data-scheme="dark"
     />
     <meta
       name="theme-color"
       content="#e8e6df"
       media="(prefers-color-scheme: light)"
+      data-scheme="light"
     />
 
     <!-- Icons. SVG for modern browsers, PNG fallback for the rest, PNG for iOS home screen. -->
@@ -106,19 +108,19 @@
       // two theme-color metas at the forced scheme so the browser-chrome tint
       // matches the page from the first paint. Without this the metas keep
       // following prefers-color-scheme until theme-toggle.js loads (and forever
-      // if it never does). The metas are found by their media attribute — no
-      // colour hardcoded here — because at this point they still hold their
-      // authored prefers-color-scheme queries.
+      // if it never does). The metas are found by their stable data-scheme
+      // attribute — the same lookup theme-toggle.js uses — so nothing here
+      // couples to the palette or to the media value this guard rewrites.
       (function () {
         try {
           const t = localStorage.getItem("theme");
           if (t === "light" || t === "dark") {
             document.documentElement.setAttribute("data-theme", t);
             const light = document.querySelector(
-              'meta[name="theme-color"][media*="light"]',
+              'meta[name="theme-color"][data-scheme="light"]',
             );
             const dark = document.querySelector(
-              'meta[name="theme-color"][media*="dark"]',
+              'meta[name="theme-color"][data-scheme="dark"]',
             );
             if (light && dark) {
               light.setAttribute("media", t === "light" ? "all" : "not all");
