@@ -28,15 +28,12 @@ export function recallHistory(entries, index, buffer, current, direction) {
     return { index: nextIndex, buffer: nextBuffer, value: entries[nextIndex] };
   }
   if (direction === "down") {
-    if (index < entries.length - 1) {
-      const nextIndex = index + 1;
-      return { index: nextIndex, buffer, value: entries[nextIndex] };
-    }
-    // Stepping down off the last entry returns to the saved live buffer.
-    if (index === entries.length - 1) {
-      return { index: index + 1, buffer, value: buffer };
-    }
-    return null;
+    if (index >= entries.length) return null; // already at the live prompt
+    const nextIndex = index + 1;
+    // Stepping down off the last entry returns to the saved live buffer;
+    // otherwise it lands on the next history entry.
+    const value = nextIndex === entries.length ? buffer : entries[nextIndex];
+    return { index: nextIndex, buffer, value };
   }
   return null;
 }
