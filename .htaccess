@@ -38,7 +38,7 @@
   # stable (changed only by an explicit redeploy). Markup, CSS and JS use no-cache
   # so browsers always revalidate with the server, ensuring a deploy is picked up
   # immediately without filename hashing while avoiding stale heuristic caching.
-  <FilesMatch "\.(png|svg|ico|jpg|jpeg|webp|gif)$">
+  <FilesMatch "\.(png|svg)$">
     Header set Cache-Control "public, max-age=2592000"
   </FilesMatch>
   <FilesMatch "\.(html|css|js|webmanifest)$">
