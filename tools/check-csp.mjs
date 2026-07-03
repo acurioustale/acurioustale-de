@@ -91,11 +91,21 @@ const policies = [
 
 // A CSP as a map of directive name -> set of values, so the two policies can be
 // compared directive by directive, order- and whitespace-insensitively.
+//
+// When a directive name is repeated WITHIN a single policy, the browser honours
+// the FIRST occurrence and ignores the rest (CSP "parse a serialized policy":
+// a duplicate directive name is discarded). So keep the first, not the last: a
+// drifted `script-src *; …; script-src 'self' 'sha256-…'` is enforced as the
+// permissive `*`, and reading the last (restrictive) copy would let this guard
+// green-light a policy the browser actually serves wide open. (This is the
+// opposite of the .htaccess `Header set` case above, where Apache serves the
+// last of repeated headers — hence the two are scanned differently.)
 function parseCsp(csp) {
   const directives = new Map();
   for (const part of csp.split(";")) {
     const [name, ...values] = part.trim().split(/\s+/).filter(Boolean);
-    if (name) directives.set(name.toLowerCase(), new Set(values));
+    const key = name?.toLowerCase();
+    if (key && !directives.has(key)) directives.set(key, new Set(values));
   }
   return directives;
 }
