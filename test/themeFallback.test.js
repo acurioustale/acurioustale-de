@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { lightDarkTokens } from "../tools/css-tokens.mjs";
 
 // The colour palette lives once as `--token: light-dark(<light>, <dark>)`, but
 // browsers without light-dark() support get a fallback: the plain `:root` block
@@ -20,12 +21,7 @@ const css = readFileSync(
 ).replace(/\/\*[\s\S]*?\*\//g, "");
 
 // --token: light-dark(<light>, <dark>);  →  Map(token → { light, dark })
-const lightDark = new Map();
-for (const m of css.matchAll(
-  /--([\w-]+):\s*light-dark\(\s*(#[0-9a-fA-F]{3,8})\s*,\s*(#[0-9a-fA-F]{3,8})\s*\)/g,
-)) {
-  lightDark.set(m[1], { light: m[2].toLowerCase(), dark: m[3].toLowerCase() });
-}
+const lightDark = lightDarkTokens(css);
 
 // Plain `--token: #hex;` declarations in a chunk of CSS  →  Map(token → hex).
 function hexVars(chunk) {
