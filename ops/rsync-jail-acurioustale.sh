@@ -41,17 +41,19 @@ case "$dest" in
 esac
 
 # Allowlist the options rsync may pass. deploy.sh sends one short-flag bundle
-# plus the long options --delete and --chmod=...; refuse any other long option
-# (--rsync-path, --files-from, --remove-source-files, extra --delete-* modes,
-# ...) so a key holder can't smuggle a dangerous receiver option past the checks
-# above, the way the upstream rrsync jail does. Short bundles can't express those
-# options, so they pass; . and the destination carry no leading dash. set -f
-# (above) makes splitting on whitespace safe.
+# plus the long options --delete and --chmod=D755,F644; refuse any other long
+# option (--rsync-path, --files-from, --remove-source-files, extra --delete-*
+# modes, ...) so a key holder can't smuggle a dangerous receiver option past the
+# checks above, the way the upstream rrsync jail does. --chmod is pinned to the
+# exact modes deploy.sh sends rather than --chmod=* so a smuggled --chmod=D777,..
+# can't make the web root world-writable on the shared host. Short bundles can't
+# express those options, so they pass; . and the destination carry no leading
+# dash. set -f (above) makes splitting on whitespace safe.
 # shellcheck disable=SC2086
 set -- ${cmd#rsync --server }
 for arg in "$@"; do
 	case "$arg" in
-	--delete | --chmod=*) : ;;
+	--delete | --chmod=D755,F644) : ;;
 	--*) reject "option not allowed: $arg" ;;
 	esac
 done

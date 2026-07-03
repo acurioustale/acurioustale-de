@@ -21,10 +21,12 @@ command="/home/www/web4186/bin/rsync-jail-acurioustale.sh",restrict ssh-ed25519 
 
 The script permits only an `rsync` _push_ into `html/acurioustale.de/` - no
 shell, no pull, no path traversal. It also allowlists the rsync options the
-deploy actually sends (`--delete` and `--chmod=...`, plus the short-flag
+deploy actually sends (`--delete` and `--chmod=D755,F644`, plus the short-flag
 bundle), refusing any other long option so a key holder can't smuggle a
 dangerous receiver option (`--rsync-path`, `--files-from`, ...) past the mode
-and destination checks, and it injects `--munge-links` so a symlink written into
+and destination checks. `--chmod` is pinned to the exact modes rather than any
+value, so a smuggled `--chmod=D777,...` can't make the shared web root
+world-writable. It also injects `--munge-links` so a symlink written into
 the web root can't resolve outside the jail when Apache serves it. The
 destination is pinned to that subdirectory rather than the account root because
 the host account is shared with other sites' deploy keys, each confined to its
