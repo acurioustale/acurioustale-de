@@ -20,18 +20,22 @@ command="/home/www/web4186/bin/rsync-jail-acurioustale.sh",restrict ssh-ed25519 
 ```
 
 The script permits only an `rsync` _push_ into `html/acurioustale.de/` - no
-shell, no pull, no path traversal. It also allowlists the rsync options the
-deploy actually sends (`--delete` and `--chmod=D755,F644`, plus the short-flag
-bundle), refusing any other long option so a key holder can't smuggle a
-dangerous receiver option (`--rsync-path`, `--files-from`, ...) past the mode
-and destination checks. `--chmod` is pinned to the exact modes rather than any
-value, so a smuggled `--chmod=D777,...` can't make the shared web root
-world-writable. It also injects `--munge-links` so a symlink written into
-the web root can't resolve outside the jail when Apache serves it. The
-destination is pinned to that subdirectory rather than the account root because
-the host account is shared with other sites' deploy keys, each confined to its
-own jail script. This is what makes the `DEPLOY_SSH_KEY` secret harmless if
-leaked (see the README "Deployment" section).
+shell, no pull, no path traversal - and confines every path argument, not just
+the last, to that subdirectory, so an extra interior destination can't slip
+past a benign trailing one. It also allowlists the rsync options the deploy
+actually sends (`--delete` and `--chmod=D755,F644`), refusing any other long
+option so a key holder can't smuggle a dangerous receiver option
+(`--rsync-path`, `--files-from`, ...) past the mode and destination checks. It
+decodes the short-flag bundle too, to reject `-s` (`--secluded-args`), which
+would otherwise move the real paths off the command line into the protocol
+stream where the traversal and destination gates can't see them. `--chmod` is
+pinned to the exact modes rather than any value, so a smuggled `--chmod=D777,...`
+can't make the shared web root world-writable. It also injects `--munge-links`
+so a symlink written into the web root can't resolve outside the jail when
+Apache serves it. The destination is pinned to that subdirectory rather than the
+account root because the host account is shared with other sites' deploy keys,
+each confined to its own jail script. This is what makes the `DEPLOY_SSH_KEY`
+secret harmless if leaked (see the README "Deployment" section).
 
 Because the server-side option bundle rsync generates varies by version, verify
 a change to the option allowlist against the host before installing it: run one
