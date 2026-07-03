@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { lightDarkTokens } from "../tools/css-tokens.mjs";
-import { metaTags } from "../tools/meta.mjs";
+import { findTags } from "../tools/html-tags.mjs";
 
 // The browser-chrome tint is set by two <meta name="theme-color"> tags, one per
 // prefers-color-scheme, and must match the page background the CSS actually
@@ -20,9 +20,9 @@ const css = readFileSync(repoFile("css/style.css"), "utf8");
 const pageBg = lightDarkTokens(css).get("page-bg");
 
 // The theme-color for one prefers-color-scheme. Attribute order varies, so
-// metaTags finds the tags by name and the media/content are read per tag.
+// findTags finds the <meta>s by name and the media/content are read per tag.
 function themeColor(scheme) {
-  for (const { attrs } of metaTags(html, { name: "theme-color" })) {
+  for (const { attrs } of findTags(html, "meta", { name: "theme-color" })) {
     const media = attrs.get("media") ?? "";
     if (!new RegExp(`prefers-color-scheme:\\s*${scheme}`).test(media)) continue;
     return attrs.get("content") ?? null;
