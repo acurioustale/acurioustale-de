@@ -22,6 +22,24 @@ test("lightDarkTokens ignores non light-dark() custom properties", () => {
   assert.equal(tokens.size, 0);
 });
 
+test("lightDarkTokens ignores light-dark() tokens inside CSS comments", () => {
+  // A commented-out palette line must not be parsed into the map (a phantom
+  // token the drift guards would then compare against) nor tripped over by the
+  // completeness check (a commented non-hex value must not hard-fail the build).
+  const css = `
+    /* old: --page-bg: light-dark(oldwhite, oldblack); */
+    --page-bg: light-dark(#e8e6df, #0e0f10);
+    /* --accent: light-dark(#111, #222); */
+  `;
+  const tokens = lightDarkTokens(css);
+  assert.deepEqual(tokens.get("page-bg"), {
+    light: "#e8e6df",
+    dark: "#0e0f10",
+  });
+  assert.equal(tokens.has("accent"), false);
+  assert.equal(tokens.size, 1);
+});
+
 test("lightDarkTokens throws on a light-dark() token it can't parse", () => {
   // A non-hex value (a named colour, rgb()/hsl()) would otherwise be dropped
   // silently, and the drift guards that read the map would stop checking that
