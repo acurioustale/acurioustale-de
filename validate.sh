@@ -41,18 +41,23 @@ have() { command -v "$1" >/dev/null 2>&1; }
 skip() { echo "note: $1 not installed - skipping $2 (CI enforces it)." >&2; }
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 
-# Assert a tool reports the pinned version. Pull the dotted version token out of
-# the --version line (so a leading "v" or trailing extra output doesn't matter)
-# and require it to equal the pin exactly. A substring test would wrongly accept
-# a superstring - e.g. shfmt 3.13.10 contains the pinned 3.13.1.
+# Assert a tool reports the pinned version. Compare the pin against each
+# whitespace-separated token of the --version output (with a leading "v"
+# stripped) and require an EXACT match to one of them. Testing tokens for
+# equality - rather than extracting the first dotted-number run - means a dotted
+# token printed before the version (a build date like 2024.01.02, a toolchain
+# version) can't be mistaken for it, while exact equality still rejects a
+# superstring like shfmt 3.13.10 for a 3.13.1 pin.
 require_version() {
-	local name="$1" want="$2" got="$3" found=""
-	[[ "$got" =~ ([0-9]+(\.[0-9]+)+) ]] && found="${BASH_REMATCH[1]}"
-	if [[ "$found" != "$want" ]]; then
-		echo "  $name version mismatch: want $want, got: $got" >&2
-		echo "  install the pinned version (see .tool-versions) so local matches CI" >&2
-		exit 1
-	fi
+	local name="$1" want="$2" got="$3" tok
+	# Unquoted on purpose: split $got into tokens on whitespace.
+	# shellcheck disable=SC2086
+	for tok in $got; do
+		[[ "${tok#v}" == "$want" ]] && return 0
+	done
+	echo "  $name version mismatch: want $want, got: $got" >&2
+	echo "  install the pinned version (see .tool-versions) so local matches CI" >&2
+	exit 1
 }
 
 # CI pins Node via .tool-versions. Warn (don't block) on a mismatch: a different
