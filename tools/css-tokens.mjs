@@ -8,12 +8,35 @@
 const LIGHT_DARK =
   /--([\w-]+):\s*light-dark\(\s*(#[0-9a-fA-F]{3,8})\s*,\s*(#[0-9a-fA-F]{3,8})\s*\)/g;
 
+// The start of a `--token: light-dark(` custom-property declaration, whatever the
+// value form. Used only to detect a declaration the hex pattern above can't
+// parse — see the completeness check below. (`color: light-dark(...)` inside an
+// `@supports` test isn't a custom property, so the `--` prefix skips it.)
+const LIGHT_DARK_DECL = /--([\w-]+):\s*light-dark\(/g;
+
 // Map(token → { light, dark }) for every light-dark() custom property in `css`,
 // with the hex values lower-cased so callers can compare without re-normalising.
+//
+// The palette is written entirely in hex on purpose, so the pattern only parses
+// two hex colours. But a value the pattern doesn't recognise (an `rgb()`/`hsl()`
+// or a named colour) would otherwise be dropped silently, and the drift guards
+// that read this map — the theme-color, manifest and fallback-palette tests —
+// would then stop checking that token without any signal, green-lighting real
+// drift. So refuse to skip quietly: any `--x: light-dark(...)` declaration that
+// didn't parse is a hard error telling the maintainer to extend the parser.
 export function lightDarkTokens(css) {
   const tokens = new Map();
   for (const m of css.matchAll(LIGHT_DARK)) {
     tokens.set(m[1], { light: m[2].toLowerCase(), dark: m[3].toLowerCase() });
+  }
+  for (const m of css.matchAll(LIGHT_DARK_DECL)) {
+    if (!tokens.has(m[1])) {
+      throw new Error(
+        `css-tokens: --${m[1]} uses a light-dark() value that is not two hex ` +
+          `colours; extend lightDarkTokens to parse it so the palette guards ` +
+          `keep checking that token instead of silently skipping it`,
+      );
+    }
   }
   return tokens;
 }
