@@ -15,12 +15,16 @@
   # over plain HTTP could forge it and be served in cleartext. Only honour it from
   # a co-located terminator: the third condition demands a private/loopback
   # REMOTE_ADDR, so a public-internet client's forged header can't skip the
-  # redirect. The redirect fires when HTTPS is off AND (the proto isn't https OR
-  # the source isn't a trusted proxy) — the [OR] binds only the two X-Forwarded
-  # conditions, still ANDed with %{HTTPS} off.
+  # redirect. That allowlist spans every form such a terminator can present:
+  # IPv4 loopback/private, IPv6 loopback (::1), IPv6 unique-local (fc00::/7) and
+  # link-local (fe80::/10), plus the IPv4-mapped-IPv6 forms (::ffff:127…, etc.) a
+  # dual-stack socket reports — so an IPv6 proxy can't fail the check and 301 an
+  # already-HTTPS request into an endless loop. The redirect fires when HTTPS is
+  # off AND (the proto isn't https OR the source isn't a trusted proxy) — the
+  # [OR] binds only the two X-Forwarded conditions, still ANDed with %{HTTPS} off.
   RewriteCond %{HTTPS} off
   RewriteCond %{HTTP:X-Forwarded-Proto} !https [OR]
-  RewriteCond %{REMOTE_ADDR} !^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|::1$)
+  RewriteCond %{REMOTE_ADDR} !^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|::1$|::ffff:(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)|[fF][cCdD]|[fF][eE][89aAbB])
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>
 
