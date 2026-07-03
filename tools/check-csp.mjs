@@ -23,12 +23,14 @@ const htaccess = await readFile(
 
 // The <meta> CSP. Matches attribute regardless of order between http-equiv and
 // content. A match inside an HTML comment (a documented sample, or an old
-// policy kept for reference) is skipped and the first live match wins —
-// mirroring the comment-skipping and first-match discipline the .htaccess
-// parser below applies to `#` lines, so the two sides can't drift in how they
-// pick a policy. Comment membership is decided by position — the nearest `<!--`
-// before the tag is still open (no intervening `-->`) — rather than by stripping
-// comments out, which a single regex pass can't do safely for nested markers.
+// policy kept for reference) is skipped and the first live match wins — safe
+// because a browser enforces every delivered <meta> CSP simultaneously (the
+// intersection), so a later meta can only tighten, never loosen, and validating
+// the first can't miss a weakening. The .htaccess header below is the opposite:
+// Apache's `Header set` replaces, so there the last directive wins. Comment
+// membership is decided by position — the nearest `<!--` before the tag is still
+// open (no intervening `-->`) — rather than by stripping comments out, which a
+// single regex pass can't do safely for nested markers.
 let metaCsp;
 for (const meta of html.matchAll(
   /<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi,
@@ -46,7 +48,11 @@ for (const meta of html.matchAll(
 // directive in .htaccess. Scan line by line and skip Apache comments so a
 // commented-out example can't be captured instead of the live directive, and
 // require the `Header set` form so only a real directive matches (a bare
-// "Content-Security-Policy" mention in prose never does).
+// "Content-Security-Policy" mention in prose never does). Take the LAST live
+// match, not the first: `Header set` replaces any earlier header of the same
+// name, so when two directives are present Apache serves the last one. Breaking
+// on the first would validate a strict policy while the browser is served a
+// looser one added below it — the drift this guard exists to catch.
 let headerCsp;
 for (const rawLine of htaccess.split("\n")) {
   const line = rawLine.trim();
@@ -56,7 +62,6 @@ for (const rawLine of htaccess.split("\n")) {
   );
   if (match) {
     headerCsp = match[1];
-    break;
   }
 }
 
