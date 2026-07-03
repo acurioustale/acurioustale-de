@@ -47,6 +47,20 @@ test("metaTags treats regex metacharacters in the query value literally", () => 
   assert.match(tags[0], /content=["']x["']/);
 });
 
+test("metaTags does not match an attribute that merely ends in the queried name", () => {
+  // `data-name`/`itemprop-name` end in `name` but are different attributes; a
+  // `{ name: ... }` query must not bind to them, or a caller reading the first
+  // match could pick the wrong tag.
+  const html2 = `
+    <meta itemprop-name="theme-color" content="wrong">
+    <meta data-name="theme-color" content="alsowrong">
+    <meta name="theme-color" content="#right">
+  `;
+  const tags = [...metaTags(html2, { name: "theme-color" })];
+  assert.equal(tags.length, 1);
+  assert.match(tags[0], /content=["']#right["']/);
+});
+
 test("metaTags skips a <meta> inside an HTML comment and yields the live one", () => {
   // A stale value kept for reference above the live tag must not be matched,
   // so a first-match caller (check-og-image) binds to the live 1200, not 800.
