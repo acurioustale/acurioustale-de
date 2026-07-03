@@ -27,9 +27,9 @@ const toggle = readFileSync(repoFile("js/theme-toggle.js"), "utf8");
 // the data-scheme off each matched tag independently.
 function metaSchemes() {
   const schemes = new Set();
-  for (const tag of metaTags(html, { name: "theme-color" })) {
-    const m = tag.match(/data-scheme=["'](\w+)["']/i);
-    if (m) schemes.add(m[1].toLowerCase());
+  for (const { attrs } of metaTags(html, { name: "theme-color" })) {
+    const scheme = attrs.get("data-scheme");
+    if (scheme) schemes.add(scheme.toLowerCase());
   }
   return schemes;
 }

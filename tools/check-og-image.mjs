@@ -19,12 +19,11 @@ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 // errors, so the message points at the real problem instead of always blaming a
 // missing tag when the tag is actually there.
 function ogDimension(property) {
-  for (const tag of metaTags(html, { property })) {
-    const match = tag.match(/content=["']([^"']*)["']/i);
-    const value = match ? match[1].trim() : "";
-    if (/^\d+$/.test(value)) return Number(value);
+  for (const { attrs } of metaTags(html, { property })) {
+    const content = attrs.get("content") ?? "";
+    if (/^\d+$/.test(content.trim())) return Number(content.trim());
     console.error(
-      `check-og-image: index.html ${property} is "${match ? match[1] : ""}", not a bare integer`,
+      `check-og-image: index.html ${property} is "${content}", not a bare integer`,
     );
     process.exitCode = 1;
     return undefined;
