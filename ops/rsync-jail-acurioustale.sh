@@ -45,11 +45,22 @@ for arg in ${cmd#rsync --server }; do
 	esac
 done
 
-dest=${cmd##* }
-case "$dest" in
-"$ALLOWED"*) : ;;
-*) reject "destination outside $ALLOWED" ;;
-esac
+# Every positional path argument must sit inside the web root. Options and the
+# short-flag bundle carry a leading dash; `.` is rsync's source placeholder for
+# a receiver. Everything else is a destination and must start with $ALLOWED.
+# Validating only the last token (${cmd##* }) would let an extra interior path
+# like `. /etc/cron.d/ html/acurioustale.de/` slip past while the benign
+# trailing dest passes the check - rsync --server can treat the extra token as a
+# second destination root. set -f (above) makes splitting on whitespace safe.
+# shellcheck disable=SC2086
+set -- ${cmd#rsync --server }
+for arg in "$@"; do
+	case "$arg" in
+	-*) : ;; # option or short-flag bundle (vetted by the allowlist below)
+	. | "$ALLOWED"*) : ;;
+	*) reject "destination outside $ALLOWED" ;;
+	esac
+done
 
 # Allowlist the options rsync may pass. deploy.sh sends one short-flag bundle
 # plus the long options --delete and --chmod=D755,F644; refuse any other long
