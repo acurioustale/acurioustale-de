@@ -46,6 +46,16 @@ test("parseAttrs ignores the / of a self-closing tag", () => {
   assert.equal(attrs.size, 1);
 });
 
+test("parseAttrs keeps an unterminated-quote value verbatim, not slicing it", () => {
+  // A malformed value that opens a quote it never closes reaches the bare-run
+  // branch; it must be preserved as-is, not unwrapped (which would drop its last
+  // character and silently forge a plausible-looking value).
+  assert.equal(parseAttrs(`type="module`).get("type"), `"module`);
+  assert.equal(parseAttrs(`type='module`).get("type"), `'module`);
+  // A lone quote is length 1 and must survive rather than collapse to "".
+  assert.equal(parseAttrs(`x="`).get("x"), `"`);
+});
+
 // --- htmlTags ---------------------------------------------------------------
 
 test("htmlTags yields each tag as { raw, attrs } in document order", () => {

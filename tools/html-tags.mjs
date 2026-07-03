@@ -26,7 +26,15 @@ export function parseAttrs(attrText) {
   for (const [, name, raw] of attrText.matchAll(ATTR)) {
     let value = "";
     if (raw !== undefined) {
-      value = raw[0] === '"' || raw[0] === "'" ? raw.slice(1, -1) : raw;
+      // Unwrap only a genuinely quoted token — one that both opens and closes
+      // with the same quote. A value that merely starts with a quote but never
+      // closes it (a malformed `foo="bar`) falls through the regex to the
+      // bare-run branch; slicing that as if it were quoted would chop its last
+      // character too, so keep it verbatim instead.
+      const q = raw[0];
+      const quoted =
+        (q === '"' || q === "'") && raw.length >= 2 && raw.at(-1) === q;
+      value = quoted ? raw.slice(1, -1) : raw;
     }
     attrs.set(name.toLowerCase(), value);
   }
