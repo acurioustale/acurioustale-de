@@ -93,8 +93,9 @@ if (bar) {
 
   // A stored override is already in localStorage (the inline guard applied it
   // pre-paint); sync the metas to match without re-persisting the same value.
-  if (mode() !== "auto") {
-    setScheme(mode());
+  const initialMode = mode();
+  if (initialMode !== "auto") {
+    setScheme(initialMode);
   }
   render();
 
