@@ -32,8 +32,17 @@ export function scriptElements(html) {
 // external and dropping it from enumeration — so its body would ship unhashed,
 // exactly the miss this module exists to prevent. Allow optional whitespace
 // around `=` as the HTML tokenizer does.
+//
+// Blank out quoted attribute values first: a whitespace-preceded `src=` sitting
+// inside another attribute's value (e.g. `<script data-tpl="<img src=x">…`)
+// would otherwise satisfy the test and drop a genuine inline script, the same
+// miss in a subtler form. An unquoted value can't contain whitespace, so a real
+// `src` attribute always survives the blanking.
 export function inlineScripts(html) {
-  return scriptElements(html).filter(
-    ({ attrs }) => !/(?:^|\s)src\s*=/i.test(attrs),
-  );
+  return scriptElements(html).filter(({ attrs }) => {
+    const bare = attrs
+      .replace(/=\s*"[^"]*"/g, "=")
+      .replace(/=\s*'[^']*'/g, "=");
+    return !/(?:^|\s)src\s*=/i.test(bare);
+  });
 }

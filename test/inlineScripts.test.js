@@ -57,3 +57,17 @@ test("inlineScripts still drops a real src attribute with spaces around =", () =
   const html = '<script src = "a.js"></script><script>inline</script>';
   assert.deepEqual(inlineScripts(html), [{ attrs: "", body: "inline" }]);
 });
+
+test("inlineScripts keeps a script whose value merely contains a src= substring", () => {
+  // A ` src=` inside another attribute's quoted value must not be read as a real
+  // src attribute; otherwise this genuine inline script is dropped from
+  // enumeration and its body ships unhashed. Both quote styles are blanked.
+  for (const attrs of ['data-tpl="<img src=x"', "data-tpl='<img src=y'"]) {
+    const html = `<script ${attrs}>inline</script>`;
+    assert.deepEqual(
+      inlineScripts(html),
+      [{ attrs: ` ${attrs}`, body: "inline" }],
+      `attrs ${attrs}`,
+    );
+  }
+});
