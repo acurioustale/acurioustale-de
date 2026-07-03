@@ -41,16 +41,27 @@ export function parseAttrs(attrText) {
   return attrs;
 }
 
-// The open-tag pattern for `name`: `<name` followed by a name-boundary char —
-// whitespace, `/` or `>`, the only things that can end a tag name in HTML —
-// through the closing `>`, consuming quoted spans whole so a `>` inside a quoted
-// value doesn't end the tag. The boundary lookahead rejects both a longer word
-// name (`<metadata>`, which a `\b` also rejected) and a hyphenated custom
-// element (`<meta-data>`, which a `\b` wrongly accepted since `-` is a word
-// boundary). Capture group 1 is the attribute text. `name` is always a literal
-// element name from our own callers, so it needs no regex escaping.
+// A tag-name boundary: whitespace, `/` or `>` — the only things that can end an
+// element name in HTML — as a zero-width lookahead. It rejects both a longer word
+// name (`<metadata>`, which a `\b` also rejected) and a hyphenated custom element
+// (`<meta-data>`, which a `\b` wrongly accepted since `-` is a word boundary). One
+// home for the rule, so the open-tag, close-tag and opener scans can't drift.
+const NAME_BOUNDARY = "(?=[\\s/>])";
+
+// The open-tag pattern for `name`: `<name` at a name boundary, through the closing
+// `>`, consuming quoted spans whole so a `>` inside a quoted value doesn't end the
+// tag. Capture group 1 is the attribute text. `name` is always a literal element
+// name from our own callers, so it needs no regex escaping.
 function openTag(name) {
-  return `<${name}(?=[\\s/>])((?:[^>"']|"[^"]*"|'[^']*')*)>`;
+  return `<${name}${NAME_BOUNDARY}((?:[^>"']|"[^"]*"|'[^']*')*)>`;
+}
+
+// The close tag for a raw-text element: `</name`, name-boundary anchored, then
+// trailing junk before `>` (`</script >`, `</script/>`) as browsers tolerate.
+// Shared by rawTextElements (to bound a body) and countRawTextOpeners (to skip
+// one), so the two agree on where an element ends.
+function closeTag(name) {
+  return `</${name}${NAME_BOUNDARY}[^>]*>`;
 }
 
 // Every <name …> tag in `html`, in document order, as { raw, attrs }. A tag
@@ -80,18 +91,43 @@ export function* findTags(html, name, query = {}) {
 }
 
 // Like htmlTags but for a raw-text element that carries a body (script): also
-// yields `body`, the text between the open and close tags. The close tag
-// tolerates trailing whitespace or junk before its `>` (`</script >`,
-// `</script/>`) as browsers do, but the name must be followed by a boundary char
-// so `</script-oops>` (or `</scriptx>`) is not read as the close — a browser
-// keeps the element open there. Comments are NOT skipped here, matching the
-// script enumeration the CSP guard depends on.
+// yields `body`, the text between the open and close tags. The close tag anchors
+// its name to a boundary char, so `</script-oops>` (or `</scriptx>`) is not read
+// as the close — a browser keeps the element open there. Comments are NOT skipped
+// here, matching the script enumeration the CSP guard depends on.
 export function* rawTextElements(html, name) {
-  const re = new RegExp(
-    `${openTag(name)}([\\s\\S]*?)</${name}(?=[\\s/>])[^>]*>`,
-    "gi",
-  );
+  const re = new RegExp(`${openTag(name)}([\\s\\S]*?)${closeTag(name)}`, "gi");
   for (const m of html.matchAll(re)) {
     yield { raw: m[0], attrs: parseAttrs(m[1]), body: m[2] };
   }
+}
+
+// How many `<name` start-tag openers `html` contains, counted on the same basis
+// rawTextElements consumes them: after each opener its raw-text body (everything
+// up to the next close tag) is skipped before the next opener is sought. So a
+// `<name` sitting inside another element's body — a `<script>` literal in a
+// JSON-LD block or in another script's source — is not miscounted as its own
+// opener, and neither is one a body scan swallows from inside a comment or an
+// attribute value. This shares the boundary and close-tag rules above, so a guard
+// can assert "every opener parsed into an element" without re-deriving the `<name`
+// regex and drifting from it. An opener whose start tag is malformed (an
+// unbalanced quote leaves its `>` unmatchable) is still counted here but dropped
+// by rawTextElements — exactly the divergence a fail-closed guard wants to catch.
+export function countRawTextOpeners(html, name) {
+  const opener = new RegExp(`<${name}${NAME_BOUNDARY}`, "gi");
+  const close = new RegExp(closeTag(name), "gi");
+  let count = 0;
+  let pos = 0;
+  for (;;) {
+    opener.lastIndex = pos;
+    const m = opener.exec(html);
+    if (!m) break;
+    count += 1;
+    // Raw text ends at the next close tag (a browser closes a raw-text element at
+    // the first `</name`), so seek the next opener past it; no close → EOF.
+    close.lastIndex = m.index + m[0].length;
+    const c = close.exec(html);
+    pos = c ? close.lastIndex : html.length;
+  }
+  return count;
 }
