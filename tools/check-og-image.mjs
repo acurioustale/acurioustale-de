@@ -12,25 +12,34 @@ import { open, readFile } from "node:fs/promises";
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 
 // The dimension the page declares for the OG image, read from the meta tag so
-// the guard and the markup can't disagree about the intended size.
+// the guard and the markup can't disagree about the intended size. Returns the
+// parsed integer, or undefined after reporting a specific failure: a missing tag
+// and a present-but-unparseable value (e.g. content="1200px") are distinct
+// errors, so the message points at the real problem instead of always blaming a
+// missing tag when the tag is actually there.
 function ogDimension(property) {
   for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
     if (!new RegExp(`property=["']${property}["']`, "i").test(tag)) continue;
-    const match = tag.match(/content=["'](\d+)["']/i);
-    if (match) return Number(match[1]);
+    const match = tag.match(/content=["']([^"']*)["']/i);
+    const value = match ? match[1].trim() : "";
+    if (/^\d+$/.test(value)) return Number(value);
+    console.error(
+      `check-og-image: index.html ${property} is "${match ? match[1] : ""}", not a bare integer`,
+    );
+    process.exitCode = 1;
+    return undefined;
   }
+  console.error(
+    `check-og-image: index.html declares no ${property} to check against`,
+  );
+  process.exitCode = 1;
   return undefined;
 }
 
 const width = ogDimension("og:image:width");
 const height = ogDimension("og:image:height");
 
-if (width === undefined || height === undefined) {
-  console.error(
-    "check-og-image: index.html declares no og:image:width/height to check against",
-  );
-  process.exitCode = 1;
-} else {
+if (width !== undefined && height !== undefined) {
   const path = new URL("../assets/og-image.png", import.meta.url);
 
   const file = await open(path, "r");
