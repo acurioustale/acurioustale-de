@@ -234,7 +234,7 @@ if (failed) {
   }));
 
   for (const { attrs, body } of scripts) {
-    const type = (attrs.match(/\btype=["']([^"']*)["']/i) || [])[1];
+    const type = attrs.get("type");
     // Non-JS data blocks (e.g. application/ld+json) are not executed and so are
     // not subject to script-src; only real inline scripts need a hash.
     if (!isExecutableJs(type)) continue;
