@@ -25,6 +25,15 @@ export function scriptElements(html) {
 
 // Inline scripts only — those with no src attribute. External scripts carry no
 // inline body to hash or inspect and are covered by script-src 'self'.
+//
+// Anchor the match to the start of an attribute (string start or whitespace):
+// `\bsrc=` would also fire on `data-src=` / `x-src=` (the `-` is a word
+// boundary), misclassifying an inline `<script data-src="…">…</script>` as
+// external and dropping it from enumeration — so its body would ship unhashed,
+// exactly the miss this module exists to prevent. Allow optional whitespace
+// around `=` as the HTML tokenizer does.
 export function inlineScripts(html) {
-  return scriptElements(html).filter(({ attrs }) => !/\bsrc=/i.test(attrs));
+  return scriptElements(html).filter(
+    ({ attrs }) => !/(?:^|\s)src\s*=/i.test(attrs),
+  );
 }

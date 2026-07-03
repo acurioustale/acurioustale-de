@@ -39,3 +39,21 @@ test("inlineScripts drops elements with a src attribute", () => {
   const html = '<script src="a.js"></script><script>inline</script>';
   assert.deepEqual(inlineScripts(html), [{ attrs: "", body: "inline" }]);
 });
+
+test("inlineScripts keeps an inline script whose attr merely ends in -src", () => {
+  // `data-src` / `x-src` are not the `src` attribute; a `\bsrc=` test would
+  // wrongly treat these as external and skip hashing their inline body.
+  for (const attr of ["data-src", "x-src"]) {
+    const html = `<script ${attr}="a.js">inline</script>`;
+    assert.deepEqual(
+      inlineScripts(html),
+      [{ attrs: ` ${attr}="a.js"`, body: "inline" }],
+      `attr ${attr}`,
+    );
+  }
+});
+
+test("inlineScripts still drops a real src attribute with spaces around =", () => {
+  const html = '<script src = "a.js"></script><script>inline</script>';
+  assert.deepEqual(inlineScripts(html), [{ attrs: "", body: "inline" }]);
+});
