@@ -57,15 +57,31 @@ esac
 # modes, ...) so a key holder can't smuggle a dangerous receiver option past the
 # checks above, the way the upstream rrsync jail does. --chmod is pinned to the
 # exact modes deploy.sh sends rather than --chmod=* so a smuggled --chmod=D777,..
-# can't make the web root world-writable on the shared host. Short bundles can't
-# express those options, so they pass; . and the destination carry no leading
-# dash. set -f (above) makes splitting on whitespace safe.
+# can't make the web root world-writable on the shared host. . and the
+# destination carry no leading dash. set -f (above) makes splitting on
+# whitespace safe.
+#
+# A short-flag bundle (single dash) can express one dangerous receiver option
+# the long-option allowlist above never sees: -s (--secluded-args, formerly
+# --protect-args). With it, rsync sends the real file and destination paths over
+# the protocol stream instead of on the command line, so the traversal and
+# destination gates above would validate a benign decoy while the receiver acts
+# on attacker-controlled paths. rrsync guards this by decoding short flags; do
+# the same here. The legitimate deploy bundle is -vlogDtprze.iLsfxCIvu (with an
+# n for --dry-run): the `s` for secluded-args sits in the pre-`.` cluster of
+# real short flags, while the post-`.` modifier section (.iLsfxCIvu) legitimately
+# carries an `s` — so inspect only the part before the first dot.
 # shellcheck disable=SC2086
 set -- ${cmd#rsync --server }
 for arg in "$@"; do
 	case "$arg" in
 	--delete | --chmod=D755,F644) : ;;
 	--*) reject "option not allowed: $arg" ;;
+	-?*)
+		case "${arg%%.*}" in
+		*s*) reject "secluded-args (-s) not allowed: $arg" ;;
+		esac
+		;;
 	esac
 done
 
