@@ -14,7 +14,7 @@
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { inlineScripts } from "./inline-scripts.mjs";
-import { isCommented } from "./html-comments.mjs";
+import { findTags } from "./html-tags.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const htaccess = await readFile(
@@ -22,28 +22,19 @@ const htaccess = await readFile(
   "utf8",
 );
 
-// The <meta> CSP. `<meta\b` anchors the tag name to a boundary so a different
-// element like <metadata> can't be read as the policy source (CodeQL
-// js/bad-tag-filter), the same anchor tools/inline-scripts.mjs uses. Matches the
-// attribute regardless of order between http-equiv and content. A match inside
-// an HTML comment (a documented sample, or an old
-// policy kept for reference) is skipped and the first live match wins — safe
-// because a browser enforces every delivered <meta> CSP simultaneously (the
-// intersection), so a later meta can only tighten, never loosen, and validating
-// the first can't miss a weakening. The .htaccess header below is the opposite:
-// Apache's `Header set` replaces, so there the last directive wins. Comment
-// membership is shared with meta.mjs through tools/html-comments.mjs.
-let metaCsp;
-for (const meta of html.matchAll(
-  /<meta\b[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi,
-)) {
-  if (isCommented(html, meta.index)) continue;
-  const match = meta[0].match(/content=(["'])([\s\S]*?)\1/i);
-  if (match) {
-    metaCsp = match[2];
-    break;
-  }
-}
+// The <meta> CSP, read through the shared tools/html-tags.mjs scanner: it finds
+// the <meta> tags (quote-aware, and tag-name anchored so a different element
+// like <metadata> can't be read as the policy source) and skips any inside an
+// HTML comment, so a documented sample or an old policy kept for reference is
+// ignored and the first LIVE match wins. That first-match rule is safe because a
+// browser enforces every delivered <meta> CSP simultaneously (the intersection),
+// so a later meta can only tighten, never loosen, and validating the first can't
+// miss a weakening. The .htaccess header below is the opposite: Apache's
+// `Header set` replaces, so there the last directive wins.
+const [cspMeta] = findTags(html, "meta", {
+  "http-equiv": "Content-Security-Policy",
+});
+const metaCsp = cspMeta?.attrs.get("content");
 
 // The header CSP: the `Header [always] set Content-Security-Policy "..."`
 // directive in .htaccess. Scan line by line and skip Apache comments so a
