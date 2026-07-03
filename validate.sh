@@ -154,17 +154,24 @@ svg_files=()
 while IFS= read -r file; do
 	svg_files+=("$file")
 done < <(git ls-files '*.svg')
-svgo_out="$(mktemp)"
-trap 'rm -f "$svgo_out"' EXIT
-for f in "${svg_files[@]}"; do
-	if ! npx svgo --config svgo.config.mjs -i "$f" -o "$svgo_out" >/dev/null; then
-		echo "  svgo failed to process $f"
-		exit 1
-	fi
-	if ! diff -q "$svgo_out" "$f" >/dev/null; then
-		echo "  $f is not optimised; run: npx svgo --config svgo.config.mjs $f"
-		exit 1
-	fi
-done
+# Guard the array expansion: on bash 3.2 (macOS default) "${svg_files[@]}"
+# trips set -u's unbound-variable check when the array is empty, so skip the
+# whole check when no SVG is tracked, mirroring the vnu guard above.
+if [[ ${#svg_files[@]} -eq 0 ]]; then
+	echo "  no SVG files found to check" >&2
+else
+	svgo_out="$(mktemp)"
+	trap 'rm -f "$svgo_out"' EXIT
+	for f in "${svg_files[@]}"; do
+		if ! npx svgo --config svgo.config.mjs -i "$f" -o "$svgo_out" >/dev/null; then
+			echo "  svgo failed to process $f"
+			exit 1
+		fi
+		if ! diff -q "$svgo_out" "$f" >/dev/null; then
+			echo "  $f is not optimised; run: npx svgo --config svgo.config.mjs $f"
+			exit 1
+		fi
+	done
+fi
 
 step "All checks passed"
