@@ -18,7 +18,8 @@
     "coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-coverage-exclude='js/terminal.js' --test-coverage-exclude='js/theme-toggle.js' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
     "test:e2e": "playwright test",
     "check:csp": "node tools/check-csp.mjs",
-    "check:og": "node tools/check-og-image.mjs"
+    "check:og": "node tools/check-og-image.mjs",
+    "check:deploy-assets": "node tools/check-deploy-assets.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

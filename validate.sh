@@ -2,7 +2,8 @@
 # Local pre-push checks, mirroring the CI "validate" job: vnu (HTML/CSS/SVG),
 # xmllint (sitemap.xml well-formedness), Prettier formatting, ShellCheck + shfmt,
 # actionlint, ESLint (JS + JSON) + stylelint (CSS) + markdownlint, the unit tests
-# (node --test), the CSP and og-image guards, and svgo (SVG optimisation).
+# (node --test), the CSP, og-image and deploy-set guards, and svgo (SVG
+# optimisation).
 # Usage: ./validate.sh [--clean]
 #   --clean   reinstall dependencies with `npm ci` first, matching CI's clean
 #             install. Omit it to reuse the existing node_modules (faster); pass
@@ -143,6 +144,9 @@ npm run --silent check:csp
 
 step "Checking the og-image dimensions"
 npm run --silent check:og
+
+step "Checking DEPLOY_ASSETS covers the tracked deploy set"
+npm run --silent check:deploy-assets
 
 step "Checking SVG optimisation (svgo)"
 # Run svgo into a temp file so a svgo crash (bad fetch, config error) is
