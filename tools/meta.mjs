@@ -18,6 +18,15 @@
 // check-csp.mjs does it: the tag is commented when the nearest `<!--` before it
 // is still open (sits after the last `-->`). A single regex pass can't strip
 // nested comment markers safely, so this positional test is used instead.
+// Escape a string for literal use inside a RegExp. The name/value pairs are
+// interpolated into an attribute matcher below, so a value carrying a regex
+// metacharacter (`og:image` is safe, but a `.` would match any char and a `(`
+// or `[` would throw on an unbalanced group) must be treated as literal text,
+// not as pattern syntax.
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export function* metaTags(html, attrs) {
   const pairs = Object.entries(attrs);
   for (const match of html.matchAll(/<meta\b[^>]*>/gi)) {
@@ -25,7 +34,11 @@ export function* metaTags(html, attrs) {
     if (before.lastIndexOf("<!--") > before.lastIndexOf("-->")) continue;
     const tag = match[0];
     if (
-      pairs.every(([k, v]) => new RegExp(`${k}=["']${v}["']`, "i").test(tag))
+      pairs.every(([k, v]) =>
+        new RegExp(`${escapeRegExp(k)}=["']${escapeRegExp(v)}["']`, "i").test(
+          tag,
+        ),
+      )
     ) {
       yield tag;
     }
