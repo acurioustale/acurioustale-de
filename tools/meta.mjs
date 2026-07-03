@@ -25,9 +25,16 @@ function escapeRegExp(s) {
 // the live tag) is skipped, so a caller that reads the first match — like
 // check-og-image.mjs pulling the og:image dimensions — can't bind to a stale
 // commented value.
+// A whole <meta> tag. `[^>]*` would stop at the first `>`, even one sitting
+// inside a quoted attribute value (`<meta data-x="a>b" content="…">`), and so
+// truncate the tag — dropping a later attribute the caller queries on. Consume
+// quoted spans whole so only an unquoted `>` closes the tag, as the HTML
+// tokenizer does.
+const META_TAG = /<meta\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi;
+
 export function* metaTags(html, attrs) {
   const pairs = Object.entries(attrs);
-  for (const match of html.matchAll(/<meta\b[^>]*>/gi)) {
+  for (const match of html.matchAll(META_TAG)) {
     if (isCommented(html, match.index)) continue;
     const tag = match[0];
     if (

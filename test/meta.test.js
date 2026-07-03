@@ -61,6 +61,14 @@ test("metaTags does not match an attribute that merely ends in the queried name"
   assert.match(tags[0], /content=["']#right["']/);
 });
 
+test("metaTags does not truncate a tag at a > inside a quoted attribute value", () => {
+  // A `>` inside an earlier attribute's quoted value must not end the tag, or a
+  // later attribute the caller queries on (here content=) would be lost.
+  const html2 = `<meta data-note="a>b" property="og:image:width" content="1200">`;
+  const [tag] = [...metaTags(html2, { property: "og:image:width" })];
+  assert.match(tag, /content=["']1200["']/);
+});
+
 test("metaTags skips a <meta> inside an HTML comment and yields the live one", () => {
   // A stale value kept for reference above the live tag must not be matched,
   // so a first-match caller (check-og-image) binds to the live 1200, not 800.
