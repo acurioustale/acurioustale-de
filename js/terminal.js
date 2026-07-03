@@ -189,27 +189,18 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
   function run() {
     const raw = input.value;
     const rawCmd = raw.trim();
-    if (!rawCmd) {
-      echoLine(raw);
-      capLog();
-      input.value = "";
-      size();
-      // A bare Enter still ends recall: reset the cursor to the live prompt so
-      // the next ArrowUp recalls the most recent command, as a real shell does.
-      historyIndex = history.length;
-      currentBuffer = "";
-      screen.scrollTop = screen.scrollHeight;
-      return;
-    }
 
     // Dedupe and store the trimmed command: the executed form is rawCmd, so
-    // "  clear" and "clear" are the same entry, and recall replays what ran.
-    if (history[history.length - 1] !== rawCmd) {
+    // "  clear" and "clear" are the same entry, and recall replays what ran. A
+    // bare Enter stores nothing but still ends recall below.
+    if (rawCmd && history[history.length - 1] !== rawCmd) {
       history.push(rawCmd);
       if (history.length > MAX_CMD_HISTORY) {
         history.shift();
       }
     }
+    // Every Enter, even a bare one, ends recall: reset the cursor to the live
+    // prompt so the next ArrowUp recalls the most recent command, like a shell.
     historyIndex = history.length;
     currentBuffer = "";
 
@@ -217,8 +208,8 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
     const cmd = rawCmd.replace(/\s+/g, " ");
 
     // clear empties the screen: wipe the scrollback and hide the boot output,
-    // leaving just the prompt, like a real terminal. Re-running a command
-    // reprints the relevant block.
+    // leaving just the prompt, like a real terminal. It returns before the shared
+    // echo/scroll tail below, since it produces no scrollback line of its own.
     if (cmd === "clear") {
       log.textContent = "";
       boot.style.display = "none";
@@ -229,20 +220,23 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
 
     echoLine(raw);
 
-    // Commands that produce real output replay the matching static block;
-    // help lists them; everything else is denied with reply()'s flavour.
-    // A trailing slash is only meaningful after a directory operand: `ls
-    // projects/` lists like `ls projects`, but `./whoami.sh/` is a file with a
-    // slash appended — an error, not a re-run. So tolerate a trailing slash only
-    // for the ls listing and match everything else (the executable) exactly.
-    const key = cmd.startsWith("ls ") ? cmd.replace(/\/+$/, "") : cmd;
-    const blockSelector = BLOCKS[key];
-    if (blockSelector) {
-      echoBlock(blockSelector);
-    } else if (cmd === "help") {
-      helpBlock();
-    } else {
-      replyLine(reply(rawCmd));
+    // A non-empty command produces output; a bare Enter just echoes the empty
+    // prompt. Commands that produce real output replay the matching static block;
+    // help lists them; everything else is denied with reply()'s flavour. A
+    // trailing slash is only meaningful after a directory operand: `ls projects/`
+    // lists like `ls projects`, but `./whoami.sh/` is a file with a slash
+    // appended — an error, not a re-run. So tolerate a trailing slash only for
+    // the ls listing and match everything else (the executable) exactly.
+    if (rawCmd) {
+      const key = cmd.startsWith("ls ") ? cmd.replace(/\/+$/, "") : cmd;
+      const blockSelector = BLOCKS[key];
+      if (blockSelector) {
+        echoBlock(blockSelector);
+      } else if (cmd === "help") {
+        helpBlock();
+      } else {
+        replyLine(reply(rawCmd));
+      }
     }
 
     capLog();
