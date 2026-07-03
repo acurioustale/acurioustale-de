@@ -95,13 +95,25 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
   // of window resize events (which fire on vertical resizes or when the window
   // exceeds the terminal's max-width).
   let lastWidth = screen.getBoundingClientRect().width;
+  // Re-freeze the height only when the width actually changed. Shared by both
+  // resize paths below so the guard can't drift between them.
+  function refit(newWidth) {
+    if (shouldRefit(newWidth, lastWidth)) {
+      lastWidth = newWidth;
+      fitScreen();
+    }
+  }
   if (window.ResizeObserver) {
     const ro = new ResizeObserver(function (entries) {
-      const newWidth = entries[0].target.getBoundingClientRect().width;
-      if (shouldRefit(newWidth, lastWidth)) {
-        lastWidth = newWidth;
-        fitScreen();
-      }
+      // Read the border-box width the observer already computed rather than
+      // calling getBoundingClientRect(), which would force a synchronous layout
+      // every resize frame — the very thrash ResizeObserver is used here to
+      // avoid. borderBoxSize matches the getBoundingClientRect() lastWidth was
+      // seeded from; fall back to it on browsers with ResizeObserver but no
+      // borderBoxSize.
+      const entry = entries[0];
+      const box = entry.borderBoxSize && entry.borderBoxSize[0];
+      refit(box ? box.inlineSize : entry.target.getBoundingClientRect().width);
     });
     ro.observe(screen);
   } else {
@@ -110,11 +122,7 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
       if (resizeFrame) return;
       resizeFrame = requestAnimationFrame(function () {
         resizeFrame = 0;
-        const newWidth = screen.getBoundingClientRect().width;
-        if (shouldRefit(newWidth, lastWidth)) {
-          lastWidth = newWidth;
-          fitScreen();
-        }
+        refit(screen.getBoundingClientRect().width);
       });
     });
   }
