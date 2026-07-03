@@ -10,10 +10,17 @@
   # On a host that terminates TLS at a front proxy and forwards HTTP to Apache,
   # %{HTTPS} reads "off" even for HTTPS clients; without the X-Forwarded-Proto
   # guard that would 301 an already-secure request back to itself in an endless
-  # loop. Both conditions must hold (default AND) for the redirect to fire, so a
-  # proxy that sets X-Forwarded-Proto: https suppresses it.
+  # loop. A proxy that sets X-Forwarded-Proto: https therefore suppresses the
+  # redirect — but that header is client-supplied, so a request arriving straight
+  # over plain HTTP could forge it and be served in cleartext. Only honour it from
+  # a co-located terminator: the third condition demands a private/loopback
+  # REMOTE_ADDR, so a public-internet client's forged header can't skip the
+  # redirect. The redirect fires when HTTPS is off AND (the proto isn't https OR
+  # the source isn't a trusted proxy) — the [OR] binds only the two X-Forwarded
+  # conditions, still ANDed with %{HTTPS} off.
   RewriteCond %{HTTPS} off
-  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https [OR]
+  RewriteCond %{REMOTE_ADDR} !^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|::1$)
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>
 
