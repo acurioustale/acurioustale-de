@@ -13,7 +13,7 @@
 // not a general HTML/Apache parser.
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { inlineScripts } from "./inline-scripts.mjs";
+import { inlineScripts, scriptElements } from "./inline-scripts.mjs";
 import { findTags } from "./html-tags.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
@@ -206,6 +206,24 @@ if (failed) {
         "frame-ancestors/upgrade-insecure-requests excluded):",
     );
     for (const d of diffs) console.error(`  ${d}`);
+  }
+
+  // Fail closed if a <script> start tag failed to parse into an element. The
+  // quote-aware scanner drops a start tag with malformed attributes (an
+  // unbalanced quote makes its closing `>` unmatchable), which would otherwise
+  // let an inline script slip out of enumeration and ship with no hash — a
+  // fail-open direction for a guard whose whole job is to hash every inline
+  // script. vnu already rejects such markup, but this keeps CSP coverage from
+  // hinging on that separate check. Count start tags the way the scanner anchors
+  // them — `<script` followed by a name-boundary char (whitespace, `/` or `>`) —
+  // and require one parsed element per start tag.
+  const startTags = (html.match(/<script(?=[\s/>])/gi) ?? []).length;
+  const parsed = scriptElements(html).length;
+  if (startTags !== parsed) {
+    failed = true;
+    console.error(
+      `check-csp: ${startTags} <script> start tag(s) but ${parsed} parsed as elements — malformed markup may hide an unhashed inline script`,
+    );
   }
 
   // Every inline <script> in index.html (external scripts are covered by
