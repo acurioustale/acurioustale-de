@@ -77,6 +77,21 @@ test("htmlTags is quote-aware and anchors the tag name to a boundary", () => {
   assert.equal(tags[0].attrs.get("content"), "1200");
 });
 
+test("htmlTags treats a stray quote in an unquoted value as a literal, not a span", () => {
+  // An unbalanced `"` (or `'`) inside an unquoted value must not open a quoted
+  // span that hunts past the tag's own `>` and swallows the following tag; a
+  // browser treats the stray quote as a literal char and sees two tags.
+  const dq = [...htmlTags(`<meta name=a content=12"00><meta name=b>`, "meta")];
+  assert.equal(dq.length, 2);
+  assert.equal(dq[0].attrs.get("content"), `12"00`);
+  assert.equal(dq[1].attrs.get("name"), "b");
+
+  const sq = [...htmlTags(`<meta name=a content=it's><meta name=b>`, "meta")];
+  assert.equal(sq.length, 2);
+  assert.equal(sq[0].attrs.get("content"), "it's");
+  assert.equal(sq[1].attrs.get("name"), "b");
+});
+
 test("htmlTags rejects a hyphenated custom element like <meta-data>", () => {
   // `-` is a word boundary, so a `\b` after the name wrongly accepted this; the
   // name must be followed by whitespace, `/` or `>` to count as a <meta>.
@@ -154,12 +169,13 @@ test("countRawTextOpeners counts each opener once, skipping bodies", () => {
   assert.equal(countRawTextOpeners(html, "script"), 2);
 });
 
-test("countRawTextOpeners still counts a malformed opener the element scan drops", () => {
-  // An unbalanced quote in the start tag makes rawTextElements skip this element,
-  // but the opener is real; counting it lets the guard spot the divergence.
-  const html = `<script type="module>alert(1)</script><script>ok()</script>`;
-  assert.equal(countRawTextOpeners(html, "script"), 2);
-  assert.equal([...rawTextElements(html, "script")].length, 1);
+test("countRawTextOpeners still counts an opener the element scan can't close", () => {
+  // A `<script>` with no `</script>` is a real opener but forms no element, so the
+  // count exceeds the parsed elements — the divergence the CSP guard fails closed
+  // on, catching an inline script that would slip out of enumeration unhashed.
+  const html = `<script>hidden()`;
+  assert.equal(countRawTextOpeners(html, "script"), 1);
+  assert.equal([...rawTextElements(html, "script")].length, 0);
 });
 
 test("countRawTextOpeners counts an unclosed opener and stops at end of input", () => {

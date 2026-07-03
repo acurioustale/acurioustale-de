@@ -50,10 +50,15 @@ const NAME_BOUNDARY = "(?=[\\s/>])";
 
 // The open-tag pattern for `name`: `<name` at a name boundary, through the closing
 // `>`, consuming quoted spans whole so a `>` inside a quoted value doesn't end the
-// tag. Capture group 1 is the attribute text. `name` is always a literal element
-// name from our own callers, so it needs no regex escaping.
+// tag. A balanced span is tried before the trailing `["']` fallback, so an
+// unbalanced stray quote in an unquoted value (`content=12"00`) is taken as a
+// literal char — as a browser tokenizes it — instead of opening a span that hunts
+// for its close past the tag's own `>` and swallows the following tag. Balanced
+// markup never reaches the fallback, so real (fully-quoted) tags are unaffected.
+// Capture group 1 is the attribute text. `name` is always a literal element name
+// from our own callers, so it needs no regex escaping.
 function openTag(name) {
-  return `<${name}${NAME_BOUNDARY}((?:[^>"']|"[^"]*"|'[^']*')*)>`;
+  return `<${name}${NAME_BOUNDARY}((?:[^>"']|"[^"]*"|'[^']*'|["'])*)>`;
 }
 
 // The close tag for a raw-text element: `</name`, name-boundary anchored, then
