@@ -92,6 +92,36 @@ test("./whoami.sh reprints the whoami card with its heading demoted", async () =
   assert.ok(clone.querySelector("p.name"), "the heading becomes a p.name");
 });
 
+test("ls projects/ tolerates the trailing slash and reprints the list", async () => {
+  const { window, document } = await loadModule("js/terminal.js");
+  const input = document.querySelector(".cmd-input");
+  const log = document.querySelector(LOG);
+
+  submit(window, input, "ls projects/");
+  assert.ok(
+    log.querySelector(".projects"),
+    "expected the projects block cloned into the log",
+  );
+});
+
+test("./whoami.sh/ errors instead of reprinting the card", async () => {
+  const { window, document } = await loadModule("js/terminal.js");
+  const input = document.querySelector(".cmd-input");
+  const log = document.querySelector(LOG);
+
+  submit(window, input, "./whoami.sh/");
+  assert.equal(
+    log.querySelector(".whoami"),
+    null,
+    "a trailing slash on the file must not reprint the card",
+  );
+  assert.match(
+    log.textContent,
+    /No such file or directory/,
+    "the trailing-slash file path is denied like a real shell",
+  );
+});
+
 test("Arrow keys recall previous commands", async () => {
   const { window, document } = await loadModule("js/terminal.js");
   const input = document.querySelector(".cmd-input");

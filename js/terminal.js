@@ -231,7 +231,12 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
 
     // Commands that produce real output replay the matching static block;
     // help lists them; everything else is denied with reply()'s flavour.
-    const blockSelector = BLOCKS[cmd.replace(/\/+$/, "")];
+    // A trailing slash is only meaningful after a directory operand: `ls
+    // projects/` lists like `ls projects`, but `./whoami.sh/` is a file with a
+    // slash appended — an error, not a re-run. So tolerate a trailing slash only
+    // for the ls listing and match everything else (the executable) exactly.
+    const key = cmd.startsWith("ls ") ? cmd.replace(/\/+$/, "") : cmd;
+    const blockSelector = BLOCKS[key];
     if (blockSelector) {
       echoBlock(blockSelector);
     } else if (cmd === "help") {
