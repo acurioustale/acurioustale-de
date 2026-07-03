@@ -34,3 +34,23 @@ test("metaTags requires every attribute in the query to be present", () => {
 test("metaTags yields nothing when no tag matches", () => {
   assert.deepEqual([...metaTags(html, { name: "nope" })], []);
 });
+
+test("metaTags skips a <meta> inside an HTML comment and yields the live one", () => {
+  // A stale value kept for reference above the live tag must not be matched,
+  // so a first-match caller (check-og-image) binds to the live 1200, not 800.
+  const withComment = `
+    <!-- <meta property="og:image:width" content="800"> -->
+    <meta property="og:image:width" content="1200">
+  `;
+  const tags = [...metaTags(withComment, { property: "og:image:width" })];
+  assert.equal(tags.length, 1);
+  assert.match(tags[0], /content=["']1200["']/);
+});
+
+test("metaTags resumes matching after a comment closes", () => {
+  // The `-->` reopens live markup: a tag after it is yielded, exercising the
+  // false side of the still-open-comment test.
+  const html2 = `<!-- note --> <meta name="theme-color" content="#abc">`;
+  const [tag] = [...metaTags(html2, { name: "theme-color" })];
+  assert.match(tag, /#abc/);
+});
