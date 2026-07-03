@@ -53,10 +53,29 @@ for (const meta of html.matchAll(
 // name, so when two directives are present Apache serves the last one. Breaking
 // on the first would validate a strict policy while the browser is served a
 // looser one added below it — the drift this guard exists to catch.
+//
+// Only a TOP-LEVEL directive is the global policy. A CSP inside a request-scoping
+// container (<Files>, <FilesMatch>, <Directory>, <Location>, <If>, ...) applies
+// only to matching requests, so it must not be captured as the global header —
+// otherwise a scoped policy could shadow the real global one in this guard while
+// Apache serves the un-validated global directive to every other request. Track
+// container depth and ignore anything nested. <IfModule>/<IfDefine>/<IfVersion>
+// are load-time conditionals rather than request scopes (the live CSP itself sits
+// inside <IfModule mod_headers.c>), so they stay transparent.
+const SCOPING_SECTION =
+  /^(?:Files|FilesMatch|Directory|DirectoryMatch|Location|LocationMatch|If|ElseIf|Else|Proxy|ProxyMatch)$/i;
 let headerCsp;
+let scopeDepth = 0;
 for (const rawLine of htaccess.split("\n")) {
   const line = rawLine.trim();
   if (line.startsWith("#")) continue;
+  const section = line.match(/^<(\/?)([A-Za-z]+)/);
+  if (section && SCOPING_SECTION.test(section[2])) {
+    if (section[1] === "/") scopeDepth = Math.max(0, scopeDepth - 1);
+    else scopeDepth += 1;
+    continue;
+  }
+  if (scopeDepth > 0) continue;
   const match = line.match(
     /^Header\s+(?:always\s+)?set\s+Content-Security-Policy\s+"([^"]*)"/i,
   );
