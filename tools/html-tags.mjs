@@ -41,13 +41,16 @@ export function parseAttrs(attrText) {
   return attrs;
 }
 
-// The open-tag pattern for `name`: `<name` at a word boundary (so `<meta` can't
-// match `<metadata>`) through the closing `>`, consuming quoted spans whole so a
-// `>` inside a quoted value doesn't end the tag. Capture group 1 is the
-// attribute text. `name` is always a literal element name from our own callers,
-// so it needs no regex escaping.
+// The open-tag pattern for `name`: `<name` followed by a name-boundary char —
+// whitespace, `/` or `>`, the only things that can end a tag name in HTML —
+// through the closing `>`, consuming quoted spans whole so a `>` inside a quoted
+// value doesn't end the tag. The boundary lookahead rejects both a longer word
+// name (`<metadata>`, which a `\b` also rejected) and a hyphenated custom
+// element (`<meta-data>`, which a `\b` wrongly accepted since `-` is a word
+// boundary). Capture group 1 is the attribute text. `name` is always a literal
+// element name from our own callers, so it needs no regex escaping.
 function openTag(name) {
-  return `<${name}\\b((?:[^>"']|"[^"]*"|'[^']*')*)>`;
+  return `<${name}(?=[\\s/>])((?:[^>"']|"[^"]*"|'[^']*')*)>`;
 }
 
 // Every <name …> tag in `html`, in document order, as { raw, attrs }. A tag
@@ -79,10 +82,15 @@ export function* findTags(html, name, query = {}) {
 // Like htmlTags but for a raw-text element that carries a body (script): also
 // yields `body`, the text between the open and close tags. The close tag
 // tolerates trailing whitespace or junk before its `>` (`</script >`,
-// `</script/>`) as browsers do. Comments are NOT skipped here, matching the
+// `</script/>`) as browsers do, but the name must be followed by a boundary char
+// so `</script-oops>` (or `</scriptx>`) is not read as the close — a browser
+// keeps the element open there. Comments are NOT skipped here, matching the
 // script enumeration the CSP guard depends on.
 export function* rawTextElements(html, name) {
-  const re = new RegExp(`${openTag(name)}([\\s\\S]*?)</${name}\\b[^>]*>`, "gi");
+  const re = new RegExp(
+    `${openTag(name)}([\\s\\S]*?)</${name}(?=[\\s/>])[^>]*>`,
+    "gi",
+  );
   for (const m of html.matchAll(re)) {
     yield { raw: m[0], attrs: parseAttrs(m[1]), body: m[2] };
   }

@@ -76,6 +76,15 @@ test("htmlTags is quote-aware and anchors the tag name to a boundary", () => {
   assert.equal(tags[0].attrs.get("content"), "1200");
 });
 
+test("htmlTags rejects a hyphenated custom element like <meta-data>", () => {
+  // `-` is a word boundary, so a `\b` after the name wrongly accepted this; the
+  // name must be followed by whitespace, `/` or `>` to count as a <meta>.
+  const html = `<meta-data name="x"><meta name="theme-color" content="#111">`;
+  const tags = [...htmlTags(html, "meta")];
+  assert.equal(tags.length, 1);
+  assert.equal(tags[0].attrs.get("content"), "#111");
+});
+
 test("htmlTags skips a tag inside an HTML comment", () => {
   const html =
     `<!-- <meta name="theme-color" content="#stale"> -->` +
@@ -120,4 +129,14 @@ test("rawTextElements yields { raw, attrs, body } for a script element", () => {
 test("rawTextElements tolerates close-tag junk and ignores </scriptx>", () => {
   const [el] = [...rawTextElements("<script>a</scriptx>b</script >", "script")];
   assert.equal(el.body, "a</scriptx>b");
+});
+
+test("rawTextElements does not treat </script-oops> as a close", () => {
+  // A trailing name char (a hyphen here) keeps the element open in a browser, so
+  // the body runs on to the real </script>; closing early would hash the wrong
+  // bytes.
+  const [el] = [
+    ...rawTextElements("<script>a</script-oops>b</script>", "script"),
+  ];
+  assert.equal(el.body, "a</script-oops>b");
 });
