@@ -180,7 +180,9 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
   const MAX_LOG_NODES = 200; // DOM scrollback nodes before pruning
   const history = [];
   let historyIndex = 0;
-  let currentBuffer = "";
+  // Per-line edits made while recalling, keyed by history index (the live prompt
+  // included). Cleared on every submit so unsubmitted edits revert, like a shell.
+  let drafts = {};
 
   // Cap scrollback growth so long sessions don't bloat the DOM. Called from
   // every path that appends to the log, including a bare Enter, so repeatedly
@@ -206,9 +208,11 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
       }
     }
     // Every Enter, even a bare one, ends recall: reset the cursor to the live
-    // prompt so the next ArrowUp recalls the most recent command, like a shell.
+    // prompt so the next ArrowUp recalls the most recent command, like a shell,
+    // and drop any unsubmitted per-line edits so recall starts from the pristine
+    // history again.
     historyIndex = history.length;
-    currentBuffer = "";
+    drafts = {};
 
     // Normalize internal consecutive whitespace to a single space for matching.
     const cmd = rawCmd.replace(/\s+/g, " ");
@@ -259,13 +263,13 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
       const next = recallHistory(
         history,
         historyIndex,
-        currentBuffer,
+        drafts,
         input.value,
         direction,
       );
       if (next) {
         historyIndex = next.index;
-        currentBuffer = next.buffer;
+        drafts = next.drafts;
         input.value = next.value;
         size();
       }
