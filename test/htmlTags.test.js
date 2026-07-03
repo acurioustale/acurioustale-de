@@ -6,6 +6,7 @@ import {
   htmlTags,
   findTags,
   rawTextElements,
+  countRawTextOpeners,
 } from "../tools/html-tags.mjs";
 
 // --- parseAttrs -------------------------------------------------------------
@@ -139,4 +140,32 @@ test("rawTextElements does not treat </script-oops> as a close", () => {
     ...rawTextElements("<script>a</script-oops>b</script>", "script"),
   ];
   assert.equal(el.body, "a</script-oops>b");
+});
+
+// --- countRawTextOpeners ----------------------------------------------------
+
+test("countRawTextOpeners counts each opener once, skipping bodies", () => {
+  // The `<script>` literal inside the first element's body is not its own opener
+  // (the body scan swallows it), so the count is 2, not 3 — a raw /<script/g would
+  // over-count here and false-alarm the CSP guard on valid markup.
+  const html =
+    `<script type="application/ld+json">{"x":"<script>"}</script>` +
+    `<script>ok()</script>`;
+  assert.equal(countRawTextOpeners(html, "script"), 2);
+});
+
+test("countRawTextOpeners still counts a malformed opener the element scan drops", () => {
+  // An unbalanced quote in the start tag makes rawTextElements skip this element,
+  // but the opener is real; counting it lets the guard spot the divergence.
+  const html = `<script type="module>alert(1)</script><script>ok()</script>`;
+  assert.equal(countRawTextOpeners(html, "script"), 2);
+  assert.equal([...rawTextElements(html, "script")].length, 1);
+});
+
+test("countRawTextOpeners counts an unclosed opener and stops at end of input", () => {
+  assert.equal(countRawTextOpeners("<script>never closed", "script"), 1);
+});
+
+test("countRawTextOpeners returns 0 when there is no opener", () => {
+  assert.equal(countRawTextOpeners("<p>hi</p>", "script"), 0);
 });

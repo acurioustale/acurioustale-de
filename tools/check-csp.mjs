@@ -14,7 +14,7 @@
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { inlineScripts, scriptElements } from "./inline-scripts.mjs";
-import { findTags } from "./html-tags.mjs";
+import { findTags, countRawTextOpeners } from "./html-tags.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const htaccess = await readFile(
@@ -214,15 +214,18 @@ if (failed) {
   // let an inline script slip out of enumeration and ship with no hash — a
   // fail-open direction for a guard whose whole job is to hash every inline
   // script. vnu already rejects such markup, but this keeps CSP coverage from
-  // hinging on that separate check. Count start tags the way the scanner anchors
-  // them — `<script` followed by a name-boundary char (whitespace, `/` or `>`) —
-  // and require one parsed element per start tag.
-  const startTags = (html.match(/<script(?=[\s/>])/gi) ?? []).length;
+  // hinging on that separate check. Both counts come from the shared scanner:
+  // countRawTextOpeners counts `<script` openers on the same body-skipping basis
+  // scriptElements parses them, so a `<script` literal inside a script body (a
+  // JSON-LD string, another script's source) or a comment is not miscounted — the
+  // two agree except on a start tag that fails to parse, which is the divergence
+  // this fails closed on.
+  const openers = countRawTextOpeners(html, "script");
   const parsed = scriptElements(html).length;
-  if (startTags !== parsed) {
+  if (openers !== parsed) {
     failed = true;
     console.error(
-      `check-csp: ${startTags} <script> start tag(s) but ${parsed} parsed as elements — malformed markup may hide an unhashed inline script`,
+      `check-csp: ${openers} <script> start tag(s) but ${parsed} parsed as elements — malformed markup may hide an unhashed inline script`,
     );
   }
 
