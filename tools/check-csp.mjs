@@ -56,15 +56,27 @@ const metaCsp = cspMeta?.attrs.get("content");
 // inside <IfModule mod_headers.c>), so they stay transparent.
 const SCOPING_SECTION =
   /^(?:Files|FilesMatch|Directory|DirectoryMatch|Location|LocationMatch|If|ElseIf|Else|Proxy|ProxyMatch)$/i;
+//
+// The depth is only meaningful if the containers balance. A stray close (depth
+// would go negative) or an unclosed open (depth ends above zero) means a global
+// directive could have been read as scoped, or a scoped one as global — so track
+// imbalance and fail closed below rather than trust a possibly-wrong headerCsp.
 let headerCsp;
 let scopeDepth = 0;
+let scopesUnbalanced = false;
 for (const rawLine of htaccess.split("\n")) {
   const line = rawLine.trim();
   if (line.startsWith("#")) continue;
   const section = line.match(/^<(\/?)([A-Za-z]+)/);
   if (section && SCOPING_SECTION.test(section[2])) {
-    if (section[1] === "/") scopeDepth = Math.max(0, scopeDepth - 1);
-    else scopeDepth += 1;
+    if (section[1] === "/") {
+      // A close with no matching open: the structure is broken. Flag it and
+      // clamp back to zero so the rest of the scan stays anchored.
+      if (--scopeDepth < 0) {
+        scopesUnbalanced = true;
+        scopeDepth = 0;
+      }
+    } else scopeDepth += 1;
     continue;
   }
   if (scopeDepth > 0) continue;
@@ -75,6 +87,9 @@ for (const rawLine of htaccess.split("\n")) {
     headerCsp = match[1];
   }
 }
+// An unclosed container leaves the depth above zero, having swallowed every
+// directive below it as nested — the global CSP among them included.
+if (scopeDepth !== 0) scopesUnbalanced = true;
 
 const policies = [
   { name: "index.html <meta> CSP", csp: metaCsp },
@@ -165,6 +180,12 @@ function directiveDiff(meta, header) {
 }
 
 let failed = false;
+if (scopesUnbalanced) {
+  failed = true;
+  console.error(
+    "check-csp: .htaccess has unbalanced scoping containers — can't tell which Content-Security-Policy is the global one",
+  );
+}
 for (const { name, csp } of policies) {
   if (!csp) {
     failed = true;
