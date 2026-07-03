@@ -44,7 +44,8 @@ const tracked = execFileSync("git", ["ls-files"], {
   .filter(Boolean);
 
 // A path ships when it equals a DEPLOY_ASSETS entry or lives under one of the
-// directory entries (deploy.sh copies those with `cp -R`).
+// directory entries (deploy.sh stages the tracked files under those via
+// `git ls-files`).
 function isShipped(path) {
   return entries.some(
     (entry) => path === entry || path.startsWith(entry + "/"),
