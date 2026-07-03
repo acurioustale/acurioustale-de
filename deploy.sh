@@ -21,7 +21,15 @@ TARGET="html/acurioustale.de/"
 # --delete remove anything no longer shipped. TARGET is unchanged, so the
 # server-side rsync jail still matches.
 DEPLOY_ASSETS=(index.html .htaccess robots.txt sitemap.xml humans.txt manifest.webmanifest css js assets)
-cp -R "${DEPLOY_ASSETS[@]}" "$stage"/
+# Stage only TRACKED files. A plain `cp -R css js assets` copies whatever those
+# directories currently hold, including untracked working-tree files (a scratch
+# .css/.mjs, a local export), which `rsync --delete` would then mirror straight
+# to the live web root on a hand-run deploy. Enumerating via `git ls-files`
+# ships exactly what is committed; --error-unmatch keeps a typo'd or renamed
+# entry a loud failure (as `cp -R` of a missing path was) rather than silently
+# shipping nothing for it. --from0 pairs with the -z NUL delimiter.
+git ls-files -z --error-unmatch -- "${DEPLOY_ASSETS[@]}" |
+	rsync --from0 --files-from=- -a ./ "$stage"/
 
 # Stamp the deploy time directly into the staged js/commands.js so the live
 # site's `uptime` counts from this deploy. Stamping the staged copy leaves the
