@@ -216,7 +216,10 @@ editing:
   by `'self'`); a `<script>` of a non-JS type like `application/ld+json` is data,
   not executed, and needs none either. The inline-script extraction logic used by
   `check-csp.mjs` is shared in `tools/inline-scripts.mjs` (also used by
-  `test/themeGuard.test.js`).
+  `test/themeGuard.test.js`), which — like the `<meta>` scan in `tools/meta.mjs` —
+  is built on the shared HTML tag/attribute parser in `tools/html-tags.mjs`, so
+  the quote-aware tag matching, comment-skipping and attribute parsing live in
+  one place instead of a private regex per guard.
 - The other security headers (`Strict-Transport-Security`,
   `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
   `Permissions-Policy`, the cross-origin isolation trio
