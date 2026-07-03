@@ -34,16 +34,18 @@ if (bar) {
 
     // Sync each meta independently: a missing or renamed one must not stop the
     // other from tracking the forced scheme (a combined `light && dark` guard
-    // would skip both and silently desync the chrome tint from the page).
+    // would skip both and silently desync the chrome tint from the page). The
+    // two metas differ only by data-scheme, so pair each concrete selector with
+    // its media string and run the locate-guard-set once instead of twice.
     const media = metaMediaFor(to);
-    const lightMeta = document.querySelector(
-      'meta[name="theme-color"][data-scheme="light"]',
-    );
-    const darkMeta = document.querySelector(
-      'meta[name="theme-color"][data-scheme="dark"]',
-    );
-    if (lightMeta) lightMeta.setAttribute("media", media.light);
-    if (darkMeta) darkMeta.setAttribute("media", media.dark);
+    const metas = [
+      ['meta[name="theme-color"][data-scheme="light"]', media.light],
+      ['meta[name="theme-color"][data-scheme="dark"]', media.dark],
+    ];
+    for (const [selector, value] of metas) {
+      const meta = document.querySelector(selector);
+      if (meta) meta.setAttribute("media", value);
+    }
   }
 
   // Persist the choice: "auto" clears the override, light/dark store it.
