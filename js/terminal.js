@@ -1,4 +1,4 @@
-import { reply, help, STATIC_BLOCKS } from "./commands.js";
+import { reply, help, blockFor } from "./commands.js";
 import { capLimit, recallHistory, shouldRefit } from "./terminal-ui.js";
 
 // Easter egg: turn the static prompt into a real input as progressive
@@ -176,8 +176,6 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
     log.appendChild(out);
   }
 
-  const BLOCKS = Object.assign(Object.create(null), STATIC_BLOCKS);
-
   const MAX_CMD_HISTORY = 100; // keyboard ↑/↓ recall depth (command entries)
   const MAX_LOG_NODES = 200; // DOM scrollback nodes before pruning
   const history = [];
@@ -229,15 +227,11 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
     echoLine(raw);
 
     // A non-empty command produces output; a bare Enter just echoes the empty
-    // prompt. Commands that produce real output replay the matching static block;
-    // help lists them; everything else is denied with reply()'s flavour. A
-    // trailing slash is only meaningful after a directory operand: `ls projects/`
-    // lists like `ls projects`, but `./whoami.sh/` is a file with a slash
-    // appended — an error, not a re-run. So tolerate a trailing slash only for
-    // the ls listing and match everything else (the executable) exactly.
+    // prompt. Commands that produce real output replay the matching static block
+    // (blockFor resolves the command, trailing-slash rule and all); help lists
+    // them; everything else is denied with reply()'s flavour.
     if (rawCmd) {
-      const key = cmd.startsWith("ls ") ? cmd.replace(/\/+$/, "") : cmd;
-      const blockSelector = BLOCKS[key];
+      const blockSelector = blockFor(cmd);
       if (blockSelector) {
         echoBlock(blockSelector);
       } else if (cmd === "help") {
