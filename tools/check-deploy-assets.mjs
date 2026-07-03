@@ -19,6 +19,22 @@ const root = new URL("../", import.meta.url);
 
 const deploySh = await readFile(new URL("deploy.sh", root), "utf8");
 
+// This parser reads exactly one `DEPLOY_ASSETS=( ... )` literal. If deploy.sh
+// ever grows a second assignment or an append (`DEPLOY_ASSETS+=( ... )`), the
+// single match below would cover only part of the shipped set and the
+// completeness check would then pass on a partial list — silently. Assert the
+// single-array assumption up front so any such refactor is a loud failure that
+// sends the maintainer here to extend the parser, rather than under-verifying.
+const mutations = deploySh.match(/^\s*DEPLOY_ASSETS\s*\+?=\(/gm) ?? [];
+if (mutations.length > 1 || mutations.some((m) => m.includes("+="))) {
+  console.error(
+    "check-deploy-assets: expected exactly one `DEPLOY_ASSETS=( ... )` array in\n" +
+      "  deploy.sh, but found a second assignment or a `+=` append this parser\n" +
+      "  does not read. Extend the parser so it covers the whole shipped set.",
+  );
+  process.exit(1);
+}
+
 // Pull the entries out of the `DEPLOY_ASSETS=( ... )` array. Whitespace-separated
 // tokens (the array spans a single line in deploy.sh) with any inline comment
 // stripped, so this reads the same list the deploy stages.
