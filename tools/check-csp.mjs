@@ -22,8 +22,11 @@ const htaccess = await readFile(
   "utf8",
 );
 
-// The <meta> CSP. Matches attribute regardless of order between http-equiv and
-// content. A match inside an HTML comment (a documented sample, or an old
+// The <meta> CSP. `<meta\b` anchors the tag name to a boundary so a different
+// element like <metadata> can't be read as the policy source (CodeQL
+// js/bad-tag-filter), the same anchor tools/inline-scripts.mjs uses. Matches the
+// attribute regardless of order between http-equiv and content. A match inside
+// an HTML comment (a documented sample, or an old
 // policy kept for reference) is skipped and the first live match wins — safe
 // because a browser enforces every delivered <meta> CSP simultaneously (the
 // intersection), so a later meta can only tighten, never loosen, and validating
@@ -32,7 +35,7 @@ const htaccess = await readFile(
 // membership is shared with meta.mjs through tools/html-comments.mjs.
 let metaCsp;
 for (const meta of html.matchAll(
-  /<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi,
+  /<meta\b[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi,
 )) {
   if (isCommented(html, meta.index)) continue;
   const match = meta[0].match(/content=(["'])([\s\S]*?)\1/i);
