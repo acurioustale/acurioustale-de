@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { metaTags } from "../tools/meta.mjs";
 
 // theme-toggle.js locates the two <meta name="theme-color"> tags by their stable
 // data-scheme attribute ("light"/"dark"), then keeps each tag's `media` attribute
@@ -19,13 +20,14 @@ const repoFile = (rel) => fileURLToPath(new URL(`../${rel}`, import.meta.url));
 const html = readFileSync(repoFile("index.html"), "utf8");
 const toggle = readFileSync(repoFile("js/theme-toggle.js"), "utf8");
 
-// The data-scheme value each <meta name="theme-color"> declares. Attribute order
-// varies, so match the tag first, then the data-scheme independently.
+// The data-scheme value each <meta name="theme-color"> declares. Reuse
+// tools/meta.mjs to find the tags rather than re-deriving a private <meta> regex
+// here, so this inherits its comment-skipping (a commented-out sample meta won't
+// be counted) and attribute-boundary anchoring. Attribute order varies, so read
+// the data-scheme off each matched tag independently.
 function metaSchemes() {
   const schemes = new Set();
-  for (const [tag] of html.matchAll(
-    /<meta[^>]*name=["']theme-color["'][^>]*>/gi,
-  )) {
+  for (const tag of metaTags(html, { name: "theme-color" })) {
     const m = tag.match(/data-scheme=["'](\w+)["']/i);
     if (m) schemes.add(m[1].toLowerCase());
   }
