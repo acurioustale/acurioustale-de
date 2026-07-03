@@ -25,11 +25,18 @@ const LIGHT_DARK_DECL = /--([\w-]+):\s*light-dark\(/g;
 // drift. So refuse to skip quietly: any `--x: light-dark(...)` declaration that
 // didn't parse is a hard error telling the maintainer to extend the parser.
 export function lightDarkTokens(css) {
+  // Strip CSS comments first so a commented-out palette line — an old value kept
+  // for reference — is neither parsed into the map nor tripped over by the
+  // completeness check below (a commented `--x: light-dark(white, black)` would
+  // otherwise hard-fail the build). CSS comments don't nest, so a non-greedy
+  // body ends each at its first `*/`, exactly as the CSS tokenizer does. The
+  // HTML guards skip comments the same way via tools/html-comments.mjs.
+  const src = css.replace(/\/\*[\s\S]*?\*\//g, "");
   const tokens = new Map();
-  for (const m of css.matchAll(LIGHT_DARK)) {
+  for (const m of src.matchAll(LIGHT_DARK)) {
     tokens.set(m[1], { light: m[2].toLowerCase(), dark: m[3].toLowerCase() });
   }
-  for (const m of css.matchAll(LIGHT_DARK_DECL)) {
+  for (const m of src.matchAll(LIGHT_DARK_DECL)) {
     if (!tokens.has(m[1])) {
       throw new Error(
         `css-tokens: --${m[1]} uses a light-dark() value that is not two hex ` +
