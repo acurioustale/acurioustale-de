@@ -6,7 +6,14 @@
 # ─── HTTPS Redirect ────────────────────────────────────────────────────────────
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  # Redirect to HTTPS only when the request truly arrived over plain HTTP.
+  # On a host that terminates TLS at a front proxy and forwards HTTP to Apache,
+  # %{HTTPS} reads "off" even for HTTPS clients; without the X-Forwarded-Proto
+  # guard that would 301 an already-secure request back to itself in an endless
+  # loop. Both conditions must hold (default AND) for the redirect to fire, so a
+  # proxy that sets X-Forwarded-Proto: https suppresses it.
   RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>
 
