@@ -26,6 +26,19 @@ export const STATIC_BLOCKS = {
   "ls projects": ".projects",
 };
 
+// Resolve a whitespace-normalized command line to the static block it reprints
+// (the whoami card or the projects list), or undefined when it isn't one. The
+// trailing-slash rule lives here, next to STATIC_BLOCKS, rather than in the DOM
+// layer: a trailing slash is meaningful only after a directory operand, so
+// `ls projects/` lists like `ls projects`, but `./whoami.sh/` is a file with a
+// slash appended — an error, not a re-run. Hence the slash is tolerated only for
+// the `ls ` listing form and every other block matches exactly. Object.hasOwn
+// keeps inherited member names (`constructor`, `toString`) from matching.
+export function blockFor(cmd) {
+  const key = cmd.startsWith("ls ") ? cmd.replace(/\/+$/, "") : cmd;
+  return Object.hasOwn(STATIC_BLOCKS, key) ? STATIC_BLOCKS[key] : undefined;
+}
+
 export function help() {
   const lines = ["available commands:"];
   for (const [cmd, desc] of Object.entries(ADVERTISED_COMMANDS)) {

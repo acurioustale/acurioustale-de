@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   reply,
   help,
+  blockFor,
   formatUptime,
   MS_PER_MIN,
   MIN_PER_HOUR,
@@ -25,6 +26,24 @@ test("sudo returns the classic lecture and incident report", () => {
     res,
     /guest is not in the sudoers file\. {2}This incident will be reported\./,
   );
+});
+
+test("blockFor resolves the static blocks and tolerates a trailing slash only after a directory", () => {
+  // Exact matches resolve to their block selectors.
+  assert.equal(blockFor("./whoami.sh"), ".whoami");
+  assert.equal(blockFor("ls projects"), ".projects");
+  // A trailing slash is meaningful only after the `ls ` directory operand.
+  assert.equal(blockFor("ls projects/"), ".projects");
+  assert.equal(blockFor("ls projects///"), ".projects");
+  // A file with a trailing slash is an error, not a re-run.
+  assert.equal(blockFor("./whoami.sh/"), undefined);
+  // Non-block commands (including a bare ls and an unknown ls operand) don't match.
+  assert.equal(blockFor("ls"), undefined);
+  assert.equal(blockFor("ls nope"), undefined);
+  assert.equal(blockFor("whoami"), undefined);
+  // Inherited Object member names must not resolve to a block.
+  assert.equal(blockFor("constructor"), undefined);
+  assert.equal(blockFor("toString"), undefined);
 });
 
 test("a bare ls lists projects/ and whoami.sh", () => {
