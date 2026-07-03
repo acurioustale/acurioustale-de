@@ -32,7 +32,18 @@ rsync\ --server\ --sender\ *) reject 'pull not allowed' ;;
 rsync\ --server\ *) : ;;
 *) reject 'only rsync push allowed' ;;
 esac
-case "$cmd" in *..*) reject 'path traversal rejected' ;; esac
+# Reject `..` but only as a path component - bounded by `/` or an argument
+# boundary - not as a bare substring. A substring test (`*..*`) also trips on a
+# legitimate filename like `foo..bar.svg` and aborts the whole deploy. Splitting
+# on whitespace first keeps the boundary logic to just `/` and the token ends;
+# set -f (above) makes the unquoted split safe. Kept before the destination and
+# option gates so the four gates read in the order the header lists them.
+# shellcheck disable=SC2086
+for arg in ${cmd#rsync --server }; do
+	case "$arg" in
+	.. | ../* | */.. | */../*) reject 'path traversal rejected' ;;
+	esac
+done
 
 dest=${cmd##* }
 case "$dest" in
