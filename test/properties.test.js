@@ -131,14 +131,14 @@ test("recallHistory keeps its index in bounds across any key sequence", () => {
       fc.array(DIRECTION),
       (entries, current, directions) => {
         let index = entries.length;
-        let buffer = current;
+        let drafts = {};
         let value = current;
         for (const direction of directions) {
-          const next = recallHistory(entries, index, buffer, value, direction);
+          const next = recallHistory(entries, index, drafts, value, direction);
           if (next === null) continue;
           assert.ok(next.index >= 0 && next.index <= entries.length);
           assert.equal(typeof next.value, "string");
-          ({ index, buffer, value } = next);
+          ({ index, drafts, value } = next);
         }
       },
     ),
