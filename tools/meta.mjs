@@ -32,9 +32,15 @@ export function* metaTags(html, attrs) {
     const tag = match[0];
     if (
       pairs.every(([k, v]) =>
-        new RegExp(`${escapeRegExp(k)}=["']${escapeRegExp(v)}["']`, "i").test(
-          tag,
-        ),
+        // Anchor the name to an attribute boundary (tag start or whitespace) so a
+        // query for `name` can't be satisfied by a longer attribute that merely
+        // ends in it — `data-name="x"` / `itemprop-name="x"` would otherwise
+        // match `{ name: "x" }` and bind a caller to the wrong tag. This mirrors
+        // the boundary anchor in tools/inline-scripts.mjs (CodeQL js/bad-tag-filter).
+        new RegExp(
+          `(?:^|\\s)${escapeRegExp(k)}=["']${escapeRegExp(v)}["']`,
+          "i",
+        ).test(tag),
       )
     ) {
       yield tag;
