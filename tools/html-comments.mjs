@@ -1,6 +1,7 @@
-// Shared HTML-comment membership test. Both the <meta> scan in meta.mjs and the
-// CSP-<meta> scan in check-csp.mjs skip a tag kept as a commented-out example
-// above the live one, so the test lives here once instead of by hand in each.
+// Shared HTML-comment membership test. The tag scan in html-tags.mjs skips a tag
+// kept as a commented-out example above the live one, so a guard reading the
+// first live <meta>/<script> (the CSP meta, the og:image dimensions) binds to
+// the real tag. The logic lives here once instead of by hand in each caller.
 //
 // Dependency-free on purpose: a small regex over our own well-formatted markup,
 // not a general HTML parser.
