@@ -210,6 +210,18 @@ if (failed) {
   // script-src 'self' and carry no inline body to hash).
   const scripts = inlineScripts(html);
 
+  // The script-src value set of each policy, parsed once. An inline script's
+  // hash is checked for membership here — in the directive that actually governs
+  // inline scripts — rather than as a bare substring anywhere in the policy
+  // string. A substring test would also pass on a hash left behind in a
+  // different directive (or a comment-like fragment) while script-src itself lost
+  // it, exactly the drift this guard exists to catch. A missing script-src
+  // yields an empty set, so any inline script correctly fails.
+  const scriptSrc = policies.map(({ name, csp }) => ({
+    name,
+    values: parseCsp(csp).get("script-src") ?? new Set(),
+  }));
+
   for (const { attrs, body } of scripts) {
     const type = (attrs.match(/\btype=["']([^"']*)["']/i) || [])[1];
     // Non-JS data blocks (e.g. application/ld+json) are not executed and so are
@@ -218,8 +230,8 @@ if (failed) {
 
     const hash = createHash("sha256").update(body, "utf8").digest("base64");
     const token = `'sha256-${hash}'`;
-    for (const { name, csp } of policies) {
-      if (!csp.includes(token)) {
+    for (const { name, values } of scriptSrc) {
+      if (!values.has(token)) {
         failed = true;
         console.error(
           `check-csp: inline script not allowed by the ${name}.\n  expected token: ${token}`,
