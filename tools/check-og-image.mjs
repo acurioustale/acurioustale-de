@@ -8,6 +8,7 @@
 // This does NOT catch content drift (editing og-image.src.svg without
 // re-rendering the PNG) — that stays a manual step, see the README.
 import { open, readFile } from "node:fs/promises";
+import { metaTags } from "./meta.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 
@@ -18,8 +19,7 @@ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 // errors, so the message points at the real problem instead of always blaming a
 // missing tag when the tag is actually there.
 function ogDimension(property) {
-  for (const [tag] of html.matchAll(/<meta\b[^>]*>/gi)) {
-    if (!new RegExp(`property=["']${property}["']`, "i").test(tag)) continue;
+  for (const tag of metaTags(html, { property })) {
     const match = tag.match(/content=["']([^"']*)["']/i);
     const value = match ? match[1].trim() : "";
     if (/^\d+$/.test(value)) return Number(value);

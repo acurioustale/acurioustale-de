@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { lightDarkTokens } from "../tools/css-tokens.mjs";
 
 // The PWA manifest's background_color and theme_color drive the installed app's
 // splash screen and OS chrome. Both are the dark page background, so — like the
@@ -19,10 +20,8 @@ const manifest = JSON.parse(
   readFileSync(repoFile("manifest.webmanifest"), "utf8"),
 );
 
-// --page-bg: light-dark(<light>, <dark>); — the dark value drives the manifest.
-const pageBg = css.match(
-  /--page-bg:\s*light-dark\(\s*(#[0-9a-fA-F]{3,8})\s*,\s*(#[0-9a-fA-F]{3,8})\s*\)/,
-);
+// The dark value of --page-bg drives the manifest (it carries a single colour).
+const pageBg = lightDarkTokens(css).get("page-bg");
 
 test("the CSS exposes a --page-bg light-dark() token", () => {
   assert.ok(
@@ -32,12 +31,9 @@ test("the CSS exposes a --page-bg light-dark() token", () => {
 });
 
 test("the manifest background_color matches the CSS dark background", () => {
-  assert.equal(
-    manifest.background_color?.toLowerCase(),
-    pageBg[2].toLowerCase(),
-  );
+  assert.equal(manifest.background_color?.toLowerCase(), pageBg.dark);
 });
 
 test("the manifest theme_color matches the CSS dark background", () => {
-  assert.equal(manifest.theme_color?.toLowerCase(), pageBg[2].toLowerCase());
+  assert.equal(manifest.theme_color?.toLowerCase(), pageBg.dark);
 });
