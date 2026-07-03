@@ -51,3 +51,17 @@ test("lightDarkTokens throws on a light-dark() token it can't parse", () => {
     assert.throws(() => lightDarkTokens(`--accent: ${value};`), /--accent/);
   }
 });
+
+test("lightDarkTokens rejects hex colours of an invalid length", () => {
+  // 5- and 7-digit hex are not valid CSS lengths (only 3/4/6/8). A dropped or
+  // extra digit is a typo that must fail loudly, not parse as the token's value.
+  for (const value of [
+    "light-dark(#12345, #222)",
+    "light-dark(#111, #1234567)",
+  ]) {
+    assert.throws(() => lightDarkTokens(`--accent: ${value};`), /--accent/);
+  }
+  // 4- and 8-digit hex (with alpha) stay valid.
+  const tokens = lightDarkTokens("--x: light-dark(#abcd, #11223344);");
+  assert.deepEqual(tokens.get("x"), { light: "#abcd", dark: "#11223344" });
+});

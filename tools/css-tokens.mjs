@@ -5,8 +5,18 @@
 // and the older-browser fallback palette (test/themeFallback.test.js) — read
 // their expected values from here rather than each re-deriving the same regex.
 
-const LIGHT_DARK =
-  /--([\w-]+):\s*light-dark\(\s*(#[0-9a-fA-F]{3,8})\s*,\s*(#[0-9a-fA-F]{3,8})\s*\)/g;
+// A CSS hex colour, and only a valid length: #rgb, #rgba, #rrggbb, #rrggbbaa.
+// `{3,8}` would also accept 5- and 7-digit hex, so a typo like `#12345` (a
+// dropped digit) would parse as a valid token and propagate to the drift guards
+// as the intended colour. Longest length first so a too-long run can't
+// partial-match a shorter valid prefix; an invalid length then fails to match
+// here and is caught by the completeness check below.
+const HEX = "#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})";
+
+const LIGHT_DARK = new RegExp(
+  `--([\\w-]+):\\s*light-dark\\(\\s*(${HEX})\\s*,\\s*(${HEX})\\s*\\)`,
+  "g",
+);
 
 // The start of a `--token: light-dark(` custom-property declaration, whatever the
 // value form. Used only to detect a declaration the hex pattern above can't
