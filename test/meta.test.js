@@ -35,6 +35,18 @@ test("metaTags yields nothing when no tag matches", () => {
   assert.deepEqual([...metaTags(html, { name: "nope" })], []);
 });
 
+test("metaTags treats regex metacharacters in the query value literally", () => {
+  // Unescaped, `.` in the value would match any char, so `ogximage` would match
+  // a query for `og.image` too. The value must be compared as literal text.
+  const html2 = `
+    <meta property="og.image" content="x">
+    <meta property="ogximage" content="y">
+  `;
+  const tags = [...metaTags(html2, { property: "og.image" })];
+  assert.equal(tags.length, 1);
+  assert.match(tags[0], /content=["']x["']/);
+});
+
 test("metaTags skips a <meta> inside an HTML comment and yields the live one", () => {
   // A stale value kept for reference above the live tag must not be matched,
   // so a first-match caller (check-og-image) binds to the live 1200, not 800.
