@@ -25,7 +25,13 @@
   RewriteCond %{HTTPS} off
   RewriteCond %{HTTP:X-Forwarded-Proto} !https [OR]
   RewriteCond %{REMOTE_ADDR} !^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|::1$|::ffff:(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)|[fF][cCdD]|[fF][eE][89aAbB])
-  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  # Redirect to the canonical host literally rather than reflecting %{HTTP_HOST}:
+  # the Host header is client-supplied, so echoing it into the Location makes the
+  # plain-HTTP hop an open redirect (a forged Host would 301 the victim to an
+  # attacker origin). This file ships only to the acurioustale.de docroot, and
+  # every canonical URL on the site uses that host, so pinning it also folds any
+  # alias onto the canonical name.
+  RewriteRule ^(.*)$ https://acurioustale.de%{REQUEST_URI} [L,R=301]
 </IfModule>
 
 # ─── Security headers ──────────────────────────────────────────────────────────
