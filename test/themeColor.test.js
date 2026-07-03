@@ -22,10 +22,10 @@ const pageBg = lightDarkTokens(css).get("page-bg");
 // The theme-color for one prefers-color-scheme. Attribute order varies, so
 // metaTags finds the tags by name and the media/content are read per tag.
 function themeColor(scheme) {
-  for (const tag of metaTags(html, { name: "theme-color" })) {
-    if (!new RegExp(`prefers-color-scheme:\\s*${scheme}`).test(tag)) continue;
-    const content = tag.match(/content=["'](#[0-9a-fA-F]{3,8})["']/);
-    return content && content[1];
+  for (const { attrs } of metaTags(html, { name: "theme-color" })) {
+    const media = attrs.get("media") ?? "";
+    if (!new RegExp(`prefers-color-scheme:\\s*${scheme}`).test(media)) continue;
+    return attrs.get("content") ?? null;
   }
   return null;
 }
