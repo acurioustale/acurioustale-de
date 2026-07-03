@@ -14,6 +14,7 @@
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { inlineScripts } from "./inline-scripts.mjs";
+import { isCommented } from "./html-comments.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const htaccess = await readFile(
@@ -28,15 +29,12 @@ const htaccess = await readFile(
 // intersection), so a later meta can only tighten, never loosen, and validating
 // the first can't miss a weakening. The .htaccess header below is the opposite:
 // Apache's `Header set` replaces, so there the last directive wins. Comment
-// membership is decided by position — the nearest `<!--` before the tag is still
-// open (no intervening `-->`) — rather than by stripping comments out, which a
-// single regex pass can't do safely for nested markers.
+// membership is shared with meta.mjs through tools/html-comments.mjs.
 let metaCsp;
 for (const meta of html.matchAll(
   /<meta[^>]*http-equiv=["']Content-Security-Policy["'][^>]*>/gi,
 )) {
-  const before = html.slice(0, meta.index);
-  if (before.lastIndexOf("<!--") > before.lastIndexOf("-->")) continue;
+  if (isCommented(html, meta.index)) continue;
   const match = meta[0].match(/content=(["'])([\s\S]*?)\1/i);
   if (match) {
     metaCsp = match[2];
