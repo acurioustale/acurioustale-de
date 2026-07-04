@@ -38,10 +38,21 @@ esac
 # on whitespace first keeps the boundary logic to just `/` and the token ends;
 # set -f (above) makes the unquoted split safe. Kept before the destination and
 # option gates so the four gates read in the order the header lists them.
+#
+# Also reject any token carrying a backslash. Every gate here and the final exec
+# split $cmd on whitespace identically, so there is no validate/exec skew - but a
+# path with whitespace or a shell metachar arrives backslash-escaped from rsync
+# (`foo\ bar`) and splits into fragments, which would then fail the destination
+# gate below with a misleading "outside the web root" message. This jail supports
+# only whitespace-free paths (the deploy set is), so reject an escaped token
+# outright with a clear reason rather than mis-parsing it. A legitimate deploy
+# token (an option, `.`, or the fixed `html/acurioustale.de/...` dest) never
+# contains a backslash.
 # shellcheck disable=SC2086
 for arg in ${cmd#rsync --server }; do
 	case "$arg" in
 	.. | ../* | */.. | */../*) reject 'path traversal rejected' ;;
+	*\\*) reject 'escaped whitespace/special chars in paths not supported' ;;
 	esac
 done
 
