@@ -3,6 +3,21 @@ name: deploy
 on:
   push:
     branches: [main]
+    # Skip the post-merge redeploy — and its LAST_DEPLOY re-stamp, which resets
+    # the terminal's `uptime` — when a push to main touches only files the site
+    # never ships. paths-ignore fails safe: a push that also changes any deployed
+    # file still runs, so a real content change can never be skipped (unlike a
+    # paths allowlist, which would silently drop a deploy if it drifted from the
+    # deploy set). The change was already linted and tested by the pull_request
+    # trigger below before it merged.
+    paths-ignore:
+      - "**.md"
+      - ".claude/**"
+      - ".github/**"
+      - "e2e/**"
+      - "ops/**"
+      - "test/**"
+      - "tools/**"
   pull_request:
   workflow_dispatch:
     inputs:
