@@ -194,6 +194,13 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
     }
   }
 
+  // Empty the prompt and resize it back to the caret. Shared by clear (which
+  // returns early) and the normal command tail so the two can't diverge.
+  function clearInput() {
+    input.value = "";
+    size();
+  }
+
   function run() {
     const raw = input.value;
     const rawCmd = raw.trim();
@@ -223,8 +230,7 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
     if (cmd === "clear") {
       log.textContent = "";
       boot.style.display = "none";
-      input.value = "";
-      size();
+      clearInput();
       return;
     }
 
@@ -247,8 +253,7 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
 
     capLog();
 
-    input.value = "";
-    size();
+    clearInput();
     // Keep the prompt in view as history scrolls up.
     screen.scrollTop = screen.scrollHeight;
   }
