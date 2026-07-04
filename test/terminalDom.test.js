@@ -177,6 +177,48 @@ test("a bare Enter resets recall to the most recent command", async () => {
   );
 });
 
+// Select every child text node of `el` as the current selection.
+function selectContents(window, document, el) {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+test("a selection outside the terminal does not block click-to-focus", async () => {
+  const { window, document } = await loadModule("js/terminal.js");
+  const input = document.querySelector(".cmd-input");
+  const screen = document.querySelector(".screen");
+
+  input.blur();
+  // A selection elsewhere on the page (the titlebar, a sibling of .screen) must
+  // not eat the click that is meant to start typing in the terminal.
+  selectContents(window, document, document.querySelector(".titlebar"));
+  screen.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  assert.equal(
+    document.activeElement,
+    input,
+    "click still focuses the input when the selection is outside the terminal",
+  );
+});
+
+test("a selection inside the terminal keeps focus off so it stays copyable", async () => {
+  const { window, document } = await loadModule("js/terminal.js");
+  const input = document.querySelector(".cmd-input");
+  const screen = document.querySelector(".screen");
+
+  input.blur();
+  // Highlighting terminal output (to copy it) must still suppress focus-stealing.
+  selectContents(window, document, document.querySelector(".whoami"));
+  screen.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  assert.notEqual(
+    document.activeElement,
+    input,
+    "an in-terminal selection must not be cleared by a focus steal",
+  );
+});
+
 test("scrollback is capped so a long session can't grow the DOM unbounded", async () => {
   const { window, document } = await loadModule("js/terminal.js");
   const input = document.querySelector(".cmd-input");
