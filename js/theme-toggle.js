@@ -1,4 +1,9 @@
-import { nextTheme, normalizeMode, metaMediaFor } from "./theme.js";
+import {
+  nextTheme,
+  normalizeMode,
+  metaMediaFor,
+  PREFERS_LIGHT,
+} from "./theme.js";
 
 // Inject the theme toggle as progressive enhancement: without JS the OS
 // preference still drives light/dark via CSS, and no dead control shows.
@@ -11,7 +16,7 @@ if (bar) {
 
   // The OS scheme drives both the cycle order and the live label, so query it
   // once and reuse the same MediaQueryList for reads and the change listener.
-  const prefersLight = window.matchMedia("(prefers-color-scheme: light)");
+  const prefersLight = window.matchMedia(PREFERS_LIGHT);
 
   // The current explicit override, or "auto" when none is set.
   function mode() {
