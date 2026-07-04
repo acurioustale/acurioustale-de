@@ -109,13 +109,26 @@ for (const { name, csp } of policies) {
 if (failed) {
   process.exitCode = 1;
 } else {
+  // Parse each policy to a directive map once, here, and reuse it for both the
+  // lock-step comparison and the script-src lookup below.
+  const parsedPolicies = policies.map(({ name, csp }) => ({
+    name,
+    directives: parseCsp(csp),
+  }));
+  const [metaDirectives, headerDirectives] = parsedPolicies.map(
+    (p) => p.directives,
+  );
+
   // The two policies must stay in lock-step: the header is the <meta> baseline
   // plus the directives a meta CSP can't express. comparePolicies strips those
   // header-only directives from both sides — so adding one to the <meta> too is
   // not read as a mismatch — while still asserting the header actually carries
   // them, and diffs the rest so loosening or dropping a directive in only one
   // file is caught, not just a drifted script hash.
-  const { missingHeaderOnly, diffs } = comparePolicies(metaCsp, headerCsp);
+  const { missingHeaderOnly, diffs } = comparePolicies(
+    metaDirectives,
+    headerDirectives,
+  );
   for (const name of missingHeaderOnly) {
     failed = true;
     console.error(
@@ -156,16 +169,16 @@ if (failed) {
   // script-src 'self' and carry no inline body to hash).
   const scripts = inlineScripts(html);
 
-  // The script-src value set of each policy, parsed once. An inline script's
-  // hash is checked for membership here — in the directive that actually governs
-  // inline scripts — rather than as a bare substring anywhere in the policy
-  // string. A substring test would also pass on a hash left behind in a
-  // different directive (or a comment-like fragment) while script-src itself lost
-  // it, exactly the drift this guard exists to catch. A missing script-src
+  // The script-src value set of each policy, from the maps parsed above. An
+  // inline script's hash is checked for membership here — in the directive that
+  // actually governs inline scripts — rather than as a bare substring anywhere in
+  // the policy string. A substring test would also pass on a hash left behind in
+  // a different directive (or a comment-like fragment) while script-src itself
+  // lost it, exactly the drift this guard exists to catch. A missing script-src
   // yields an empty set, so any inline script correctly fails.
-  const scriptSrc = policies.map(({ name, csp }) => ({
+  const scriptSrc = parsedPolicies.map(({ name, directives }) => ({
     name,
-    values: parseCsp(csp).get("script-src") ?? new Set(),
+    values: directives.get("script-src") ?? new Set(),
   }));
 
   for (const { attrs, body } of scripts) {
