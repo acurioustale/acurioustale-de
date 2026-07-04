@@ -13,9 +13,14 @@
 // here and is caught by the completeness check below.
 const HEX = "#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})";
 
+// Sticky (`y`) so it matches only at the offset it's anchored to, not the next
+// declaration further down: the completeness loop below points it at each
+// `light-dark(` declaration in turn and treats a non-match as an unparseable
+// value, so a token redeclared with a non-hex value can't be waved through just
+// because an earlier hex declaration of the same token parsed.
 const LIGHT_DARK = new RegExp(
   `--([\\w-]+):\\s*light-dark\\(\\s*(${HEX})\\s*,\\s*(${HEX})\\s*\\)`,
-  "g",
+  "y",
 );
 
 // The start of a `--token: light-dark(` custom-property declaration, whatever the
@@ -43,17 +48,27 @@ export function lightDarkTokens(css) {
   // HTML guards skip comments the same way via tools/html-comments.mjs.
   const src = css.replace(/\/\*[\s\S]*?\*\//g, "");
   const tokens = new Map();
-  for (const m of src.matchAll(LIGHT_DARK)) {
-    tokens.set(m[1], { light: m[2].toLowerCase(), dark: m[3].toLowerCase() });
-  }
-  for (const m of src.matchAll(LIGHT_DARK_DECL)) {
-    if (!tokens.has(m[1])) {
+  // Walk every `--token: light-dark(` declaration in source order and parse it
+  // where it sits. Driving the map off the declarations (not off the hex matches
+  // alone) means a later redeclaration wins — matching the CSS cascade — while
+  // the sticky hex parse still runs on every occurrence, so a non-hex or
+  // wrong-length value fails loudly even when an earlier declaration of the same
+  // token already parsed. `Map.set` keeps the last write, so tokens holds the
+  // colour the browser actually uses.
+  for (const decl of src.matchAll(LIGHT_DARK_DECL)) {
+    LIGHT_DARK.lastIndex = decl.index;
+    const hex = LIGHT_DARK.exec(src);
+    if (!hex) {
       throw new Error(
-        `css-tokens: --${m[1]} uses a light-dark() value that is not two hex ` +
+        `css-tokens: --${decl[1]} uses a light-dark() value that is not two hex ` +
           `colours; extend lightDarkTokens to parse it so the palette guards ` +
           `keep checking that token instead of silently skipping it`,
       );
     }
+    tokens.set(decl[1], {
+      light: hex[2].toLowerCase(),
+      dark: hex[3].toLowerCase(),
+    });
   }
   return tokens;
 }
