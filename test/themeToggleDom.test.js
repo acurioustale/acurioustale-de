@@ -136,6 +136,33 @@ test("a storage event from another tab mirrors the scheme without writing back",
   assert.equal(root.hasAttribute("data-theme"), false);
 });
 
+test("a sessionStorage change in another tab is ignored", async () => {
+  const { document, window } = await loadModule("js/theme-toggle.js");
+  const root = document.documentElement;
+
+  // Mirror a real localStorage override first.
+  window.dispatchEvent(
+    new window.StorageEvent("storage", { key: "theme", newValue: "dark" }),
+  );
+  assert.equal(root.getAttribute("data-theme"), "dark");
+
+  // Another tab writes the "theme" key in a *different* storage area
+  // (sessionStorage). It fires the same storage event, but must not touch our
+  // localStorage-driven theme.
+  window.dispatchEvent(
+    new window.StorageEvent("storage", {
+      key: "theme",
+      newValue: "light",
+      storageArea: window.sessionStorage,
+    }),
+  );
+  assert.equal(
+    root.getAttribute("data-theme"),
+    "dark",
+    "a sessionStorage event must not change the theme",
+  );
+});
+
 test("clearing site storage in another tab (key null) resets to auto", async () => {
   const { document, window } = await loadModule("js/theme-toggle.js");
   const root = document.documentElement;
