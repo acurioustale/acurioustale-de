@@ -17,6 +17,12 @@ import { isCommented } from "./html-comments.mjs";
 // is taken verbatim; a boolean attribute with no value maps to "". Because the
 // names are tokenised, `data-name` becomes the key "data-name" and can never be
 // read as "name" — the attribute-boundary bug is structurally impossible here.
+// A duplicated attribute keeps the FIRST occurrence, as the HTML parser does
+// ("create an element": a later duplicate name is dropped). Reading the last
+// would let a guard judge a tag on a value the browser never sees — e.g. the
+// meta CSP off `content="…" content="…"`, or a script's executability off
+// `type="module" type="application/ld+json"` — so first-wins here matches
+// parseCsp's first-wins over duplicate directives and the first-live-tag rule.
 export function parseAttrs(attrText) {
   const attrs = new Map();
   // name, then an optional `= value` where value is double-quoted, single-quoted
@@ -36,7 +42,8 @@ export function parseAttrs(attrText) {
         (q === '"' || q === "'") && raw.length >= 2 && raw.at(-1) === q;
       value = quoted ? raw.slice(1, -1) : raw;
     }
-    attrs.set(name.toLowerCase(), value);
+    const key = name.toLowerCase();
+    if (!attrs.has(key)) attrs.set(key, value);
   }
   return attrs;
 }
