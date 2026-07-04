@@ -19,17 +19,22 @@ const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 // errors, so the message points at the real problem instead of always blaming a
 // missing tag when the tag is actually there.
 function ogDimension(property) {
-  for (const { attrs } of findTags(html, "meta", { property })) {
-    const content = attrs.get("content") ?? "";
-    if (/^\d+$/.test(content.trim())) return Number(content.trim());
+  // The first live <meta property=…>, read the same way the CSP guard reads its
+  // meta (`const [cspMeta] = findTags(…)`): a browser enforces the first, so
+  // validating it can't miss a later one. A missing tag and a present-but-
+  // unparseable value are distinct errors.
+  const [tag] = findTags(html, "meta", { property });
+  if (!tag) {
     console.error(
-      `check-og-image: index.html ${property} is "${content}", not a bare integer`,
+      `check-og-image: index.html declares no ${property} to check against`,
     );
     process.exitCode = 1;
     return undefined;
   }
+  const content = tag.attrs.get("content") ?? "";
+  if (/^\d+$/.test(content.trim())) return Number(content.trim());
   console.error(
-    `check-og-image: index.html declares no ${property} to check against`,
+    `check-og-image: index.html ${property} is "${content}", not a bare integer`,
   );
   process.exitCode = 1;
   return undefined;
