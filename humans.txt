@@ -7,7 +7,7 @@ Location: Cork, Ireland
 
 /* SITE */
 
-Last update: 2026-06-25
+Last update: 2026-07-04
 Language: English
 Standards: HTML5, CSS
 Components: None - no framework, no build step, zero runtime dependencies
