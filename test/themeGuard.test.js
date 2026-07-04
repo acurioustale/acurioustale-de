@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { JSDOM } from "jsdom";
 
-import { normalizeMode } from "../js/theme.js";
+import { normalizeMode, metaMediaFor } from "../js/theme.js";
 import { inlineScripts } from "../tools/inline-scripts.mjs";
 
 // The pre-paint theme guard in index.html runs before any module can load, so it
@@ -94,7 +94,10 @@ test("the inline guard applies an override iff normalizeMode() does, with the sa
 // this up once it loads). Run the real guard against a DOM built from the
 // shipping index.html and check the actual metas — this also binds the guard's
 // data-scheme meta selectors to the shipping markup: if either stops matching,
-// the media would stay on its prefers query and these fail.
+// the media would stay on its prefers query and these fail. The expected media
+// come from metaMediaFor(), the same function theme-toggle.js's setScheme() uses,
+// so the guard's hand-copied all/"not all" mapping is bound to that one source
+// of truth rather than to independent literals here.
 function runGuardInDom(stored) {
   const { window } = new JSDOM(html);
   vm.runInNewContext(guardSource, {
@@ -108,26 +111,31 @@ const lightMeta = 'meta[name="theme-color"][data-scheme="light"]';
 const darkMeta = 'meta[name="theme-color"][data-scheme="dark"]';
 
 test("the inline guard points the theme-color metas at a forced scheme", () => {
-  for (const [stored, light, dark] of [
-    ["dark", "not all", "all"],
-    ["light", "all", "not all"],
-  ]) {
+  for (const stored of ["dark", "light"]) {
+    const expected = metaMediaFor(stored);
     const doc = runGuardInDom(stored);
     assert.equal(doc.documentElement.getAttribute("data-theme"), stored);
-    assert.equal(doc.querySelector(lightMeta).getAttribute("media"), light);
-    assert.equal(doc.querySelector(darkMeta).getAttribute("media"), dark);
+    assert.equal(
+      doc.querySelector(lightMeta).getAttribute("media"),
+      expected.light,
+    );
+    assert.equal(
+      doc.querySelector(darkMeta).getAttribute("media"),
+      expected.dark,
+    );
   }
 });
 
 test("with no override the guard leaves the metas on prefers-color-scheme", () => {
+  const expected = metaMediaFor("auto");
   const doc = runGuardInDom(null);
   assert.equal(doc.documentElement.hasAttribute("data-theme"), false);
   assert.equal(
     doc.querySelector(lightMeta).getAttribute("media"),
-    "(prefers-color-scheme: light)",
+    expected.light,
   );
   assert.equal(
     doc.querySelector(darkMeta).getAttribute("media"),
-    "(prefers-color-scheme: dark)",
+    expected.dark,
   );
 });
