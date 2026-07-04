@@ -51,8 +51,10 @@ export function directiveDiff(meta, header) {
   return diffs;
 }
 
-// Compare the <meta> and .htaccess policies for lock-step. Returns
-// { missingHeaderOnly, diffs }:
+// Compare the <meta> and .htaccess policies for lock-step. Takes each already
+// parsed to a directive map (via parseCsp) so the caller parses each policy once
+// and reuses the maps — for the script-src lookup too — rather than re-parsing.
+// Returns { missingHeaderOnly, diffs }:
 //   - missingHeaderOnly: header-only directives absent from the header. They are
 //     stripped from the comparison, so their absence would otherwise go unnoticed
 //     — asserting their presence keeps deleting frame-ancestors or
@@ -64,16 +66,15 @@ export function directiveDiff(meta, header) {
 // Header-only directives are stripped from BOTH policies, not just the header:
 // adding one to the <meta> too (harmless — the browser ignores frame-ancestors
 // there) must not read as a `only in <meta>` mismatch and fail the build.
-export function comparePolicies(metaCsp, headerCsp) {
-  const header = parseCsp(headerCsp);
+export function comparePolicies(metaDirectives, headerDirectives) {
   const missingHeaderOnly = [...HEADER_ONLY].filter(
-    (name) => !header.has(name),
+    (name) => !headerDirectives.has(name),
   );
   const withoutHeaderOnly = (directives) =>
     new Map([...directives].filter(([name]) => !HEADER_ONLY.has(name)));
   const diffs = directiveDiff(
-    withoutHeaderOnly(parseCsp(metaCsp)),
-    withoutHeaderOnly(header),
+    withoutHeaderOnly(metaDirectives),
+    withoutHeaderOnly(headerDirectives),
   );
   return { missingHeaderOnly, diffs };
 }

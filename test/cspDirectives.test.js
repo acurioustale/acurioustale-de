@@ -53,8 +53,13 @@ test("directiveDiff returns nothing when the two policies match", () => {
 const META = "default-src 'none'; script-src 'self'; base-uri 'none'";
 const HEADER = `${META}; frame-ancestors 'none'; upgrade-insecure-requests`;
 
+// comparePolicies takes each policy already parsed to a directive map, so the
+// caller parses once and reuses the maps.
+const compare = (metaCsp, headerCsp) =>
+  comparePolicies(parseCsp(metaCsp), parseCsp(headerCsp));
+
 test("comparePolicies passes when the header is the meta plus header-only directives", () => {
-  const { missingHeaderOnly, diffs } = comparePolicies(META, HEADER);
+  const { missingHeaderOnly, diffs } = compare(META, HEADER);
   assert.deepEqual(missingHeaderOnly, []);
   assert.deepEqual(diffs, []);
 });
@@ -63,20 +68,20 @@ test("comparePolicies does not flag a header-only directive also present in the 
   // Adding frame-ancestors to the <meta> too is harmless (the browser ignores it
   // there); it must not read as `only in <meta>` and fail the build.
   const meta = `${META}; frame-ancestors 'none'`;
-  const { missingHeaderOnly, diffs } = comparePolicies(meta, HEADER);
+  const { missingHeaderOnly, diffs } = compare(meta, HEADER);
   assert.deepEqual(missingHeaderOnly, []);
   assert.deepEqual(diffs, []);
 });
 
 test("comparePolicies reports a header missing a required header-only directive", () => {
   const header = `${META}; frame-ancestors 'none'`; // no upgrade-insecure-requests
-  const { missingHeaderOnly } = comparePolicies(META, header);
+  const { missingHeaderOnly } = compare(META, header);
   assert.deepEqual(missingHeaderOnly, ["upgrade-insecure-requests"]);
 });
 
 test("comparePolicies still catches a real divergence in a shared directive", () => {
   const header = `default-src 'none'; script-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; upgrade-insecure-requests`;
-  const { diffs } = comparePolicies(META, header);
+  const { diffs } = compare(META, header);
   assert.deepEqual(diffs, [
     "script-src: <meta> ['self'] vs .htaccess ['self' 'unsafe-inline']",
   ]);
