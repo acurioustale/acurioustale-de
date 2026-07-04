@@ -50,13 +50,15 @@ const entries = arrayMatch[1]
   .split(/\s+/)
   .filter(Boolean);
 
-// Tracked files, straight from git — the same enumeration validate.sh uses for
-// the shell and SVG checks, so a newly committed file is seen here too.
-const tracked = execFileSync("git", ["ls-files"], {
+// Tracked files, straight from git. NUL-delimited (`-z`) like deploy.sh's own
+// staging: without it git C-quotes any path with a space or non-ASCII byte
+// (`"assets/caf\303\251.png"`), which then matches neither a ship rule nor a
+// dev-only rule and fails the build spuriously on a file that genuinely ships.
+const tracked = execFileSync("git", ["ls-files", "-z"], {
   cwd: fileURLToPath(root),
   encoding: "utf8",
 })
-  .split("\n")
+  .split("\0")
   .filter(Boolean);
 
 // A path ships when it equals a DEPLOY_ASSETS entry or lives under one of the
