@@ -15,6 +15,7 @@ import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { inlineScripts, scriptElements } from "./inline-scripts.mjs";
 import { findTags, countRawTextOpeners } from "./html-tags.mjs";
+import { readHeaderCsp } from "./htaccess-csp.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const htaccess = await readFile(
@@ -37,59 +38,13 @@ const [cspMeta] = findTags(html, "meta", {
 const metaCsp = cspMeta?.attrs.get("content");
 
 // The header CSP: the `Header [always] set Content-Security-Policy "..."`
-// directive in .htaccess. Scan line by line and skip Apache comments so a
-// commented-out example can't be captured instead of the live directive, and
-// require the `Header set` form so only a real directive matches (a bare
-// "Content-Security-Policy" mention in prose never does). Take the LAST live
-// match, not the first: `Header set` replaces any earlier header of the same
-// name, so when two directives are present Apache serves the last one. Breaking
-// on the first would validate a strict policy while the browser is served a
-// looser one added below it — the drift this guard exists to catch.
-//
-// Only a TOP-LEVEL directive is the global policy. A CSP inside a request-scoping
-// container (<Files>, <FilesMatch>, <Directory>, <Location>, <If>, ...) applies
-// only to matching requests, so it must not be captured as the global header —
-// otherwise a scoped policy could shadow the real global one in this guard while
-// Apache serves the un-validated global directive to every other request. Track
-// container depth and ignore anything nested. <IfModule>/<IfDefine>/<IfVersion>
-// are load-time conditionals rather than request scopes (the live CSP itself sits
-// inside <IfModule mod_headers.c>), so they stay transparent.
-const SCOPING_SECTION =
-  /^(?:Files|FilesMatch|Directory|DirectoryMatch|Location|LocationMatch|If|ElseIf|Else|Proxy|ProxyMatch)$/i;
-//
-// The depth is only meaningful if the containers balance. A stray close (depth
-// would go negative) or an unclosed open (depth ends above zero) means a global
-// directive could have been read as scoped, or a scoped one as global — so track
-// imbalance and fail closed below rather than trust a possibly-wrong headerCsp.
-let headerCsp;
-let scopeDepth = 0;
-let scopesUnbalanced = false;
-for (const rawLine of htaccess.split("\n")) {
-  const line = rawLine.trim();
-  if (line.startsWith("#")) continue;
-  const section = line.match(/^<(\/?)([A-Za-z]+)/);
-  if (section && SCOPING_SECTION.test(section[2])) {
-    if (section[1] === "/") {
-      // A close with no matching open: the structure is broken. Flag it and
-      // clamp back to zero so the rest of the scan stays anchored.
-      if (--scopeDepth < 0) {
-        scopesUnbalanced = true;
-        scopeDepth = 0;
-      }
-    } else scopeDepth += 1;
-    continue;
-  }
-  if (scopeDepth > 0) continue;
-  const match = line.match(
-    /^Header\s+(?:always\s+)?set\s+Content-Security-Policy\s+"([^"]*)"/i,
-  );
-  if (match) {
-    headerCsp = match[1];
-  }
-}
-// An unclosed container leaves the depth above zero, having swallowed every
-// directive below it as nested — the global CSP among them included.
-if (scopeDepth !== 0) scopesUnbalanced = true;
+// directive in .htaccess, read through tools/htaccess-csp.mjs. It skips Apache
+// comments and commented-out examples, reassembles a backslash-continued
+// directive, requires the `Header set` form, takes the LAST live match (Apache's
+// `Header set` replaces, so the browser is served the last of repeated headers),
+// and ignores any directive inside a request-scoping container while flagging an
+// unbalanced structure so we fail closed rather than trust a mis-scoped read.
+const { headerCsp, scopesUnbalanced } = readHeaderCsp(htaccess);
 
 const policies = [
   { name: "index.html <meta> CSP", csp: metaCsp },
