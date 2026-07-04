@@ -52,6 +52,41 @@ test("lightDarkTokens throws on a light-dark() token it can't parse", () => {
   }
 });
 
+test("lightDarkTokens uses the last declaration when a token is redeclared", () => {
+  // A later declaration wins in the CSS cascade, so the map must report the last
+  // one (what the browser renders), not the first.
+  const tokens = lightDarkTokens(
+    "--x: light-dark(#111, #222); --x: light-dark(#333, #444);",
+  );
+  assert.deepEqual(tokens.get("x"), { light: "#333", dark: "#444" });
+});
+
+test("lightDarkTokens throws on a non-hex redeclaration of a parsed token", () => {
+  // The hole this guards: a valid first declaration must not suppress the
+  // completeness error for a later non-hex one. Otherwise the map keeps the
+  // superseded hex value while the cascade uses the unparsed colour, and the
+  // palette drift guards silently validate against a colour the page dropped.
+  assert.throws(
+    () =>
+      lightDarkTokens(
+        "--accent: light-dark(#111, #222); --accent: light-dark(red, blue);",
+      ),
+    /--accent/,
+  );
+});
+
+test("lightDarkTokens throws on a non-hex token even when a later token parses", () => {
+  // The offending token is named, and a parseable declaration further down
+  // doesn't mask an earlier unparseable one.
+  assert.throws(
+    () =>
+      lightDarkTokens(
+        "--a: light-dark(red, blue); --b: light-dark(#111, #222);",
+      ),
+    /--a/,
+  );
+});
+
 test("lightDarkTokens rejects hex colours of an invalid length", () => {
   // 5- and 7-digit hex are not valid CSS lengths (only 3/4/6/8). A dropped or
   // extra digit is a typo that must fail loudly, not parse as the token's value.
