@@ -1,4 +1,4 @@
-import { reply, help, blockFor } from "./commands.js";
+import { reply, help, blockFor, DOM_COMMANDS } from "./commands.js";
 import { capLimit, recallHistory, shouldRefit } from "./terminal-ui.js";
 
 // Easter egg: turn the static prompt into a real input as progressive
@@ -239,7 +239,7 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
     // clear empties the screen: wipe the scrollback and hide the boot output,
     // leaving just the prompt, like a real terminal. It returns before the shared
     // echo/scroll tail below, since it produces no scrollback line of its own.
-    if (cmd === "clear") {
+    if (cmd === DOM_COMMANDS.clear) {
       log.textContent = "";
       boot.style.display = "none";
       clearInput();
@@ -256,7 +256,7 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
       const blockSelector = blockFor(cmd);
       if (blockSelector) {
         echoBlock(blockSelector);
-      } else if (cmd === "help") {
+      } else if (cmd === DOM_COMMANDS.help) {
         helpBlock();
       } else {
         replyLine(reply(rawCmd));
