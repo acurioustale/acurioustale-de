@@ -22,6 +22,14 @@ export function nextTheme(current, osPrefersLight) {
   return order[(order.indexOf(current) + 1) % order.length];
 }
 
+// The prefers-color-scheme media queries. Exported so theme-toggle.js runs its
+// runtime matchMedia() off the very string the auto-mode meta media attribute
+// carries: the toggle's cycle order (derived from the runtime match) and the
+// chrome tint (from these attributes) must agree, and a second hand-written copy
+// of the query could drift from this one with no test to catch it.
+export const PREFERS_LIGHT = "(prefers-color-scheme: light)";
+export const PREFERS_DARK = "(prefers-color-scheme: dark)";
+
 // The `media` attribute each <meta name="theme-color"> must carry for a given
 // mode, returned as { light, dark } for the light- and dark-palette metas. In
 // "auto" both keep their prefers-color-scheme queries so the OS drives the tint;
@@ -31,8 +39,8 @@ export function nextTheme(current, osPrefersLight) {
 export function metaMediaFor(mode) {
   if (mode === "auto") {
     return {
-      light: "(prefers-color-scheme: light)",
-      dark: "(prefers-color-scheme: dark)",
+      light: PREFERS_LIGHT,
+      dark: PREFERS_DARK,
     };
   }
   return {
