@@ -157,6 +157,18 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
       p.textContent = heading.textContent;
       heading.replaceWith(p);
     }
+    // Neutralise every cloned <a>: the boot card's links are the live controls,
+    // so a replayed copy in the scrollback would add duplicate focusable tab
+    // stops and re-announce each link to assistive tech on every reprint. Demote
+    // them to inline text spans (like the <h1> above), keeping the visible URL
+    // text but dropping the interactive role — a real terminal reprints a file
+    // as text, not as a second set of live links.
+    for (const link of clone.querySelectorAll("a")) {
+      const span = document.createElement("span");
+      span.className = link.className;
+      span.textContent = link.textContent;
+      link.replaceWith(span);
+    }
     log.appendChild(clone);
   }
 
