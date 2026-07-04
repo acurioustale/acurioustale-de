@@ -64,12 +64,18 @@
   # `ServerTokens Prod`, so only the bare `Apache` token (no version) is exposed;
   # nothing further is actionable at this layer.
 
-  # Long-cache the static images: the favicon, apple-touch icon and OG card are
-  # stable (changed only by an explicit redeploy). Markup, CSS and JS use no-cache
-  # so browsers always revalidate with the server, ensuring a deploy is picked up
-  # immediately without filename hashing while avoiding stale heuristic caching.
+  # Cache the static images (favicon, apple-touch icon, OG card) hard for a day,
+  # then stale-while-revalidate for a month: without filename hashing a changed
+  # image would otherwise stay pinned in caches for the whole max-age. A short
+  # fresh window keeps repeat loads instant, and stale-while-revalidate serves the
+  # cached copy immediately after it while refreshing in the background, so a
+  # redeployed favicon or OG card is picked up on the next load instead of after
+  # up to a month. Markup, CSS and JS use no-cache so browsers always revalidate,
+  # ensuring a deploy is picked up immediately while avoiding stale heuristic
+  # caching. (Social scrapers cache OG images by their own rules; purge via the
+  # platform's card debugger when the card changes.)
   <FilesMatch "\.(png|svg)$">
-    Header set Cache-Control "public, max-age=2592000"
+    Header set Cache-Control "public, max-age=86400, stale-while-revalidate=2592000"
   </FilesMatch>
   <FilesMatch "\.(html|css|js|webmanifest)$">
     Header set Cache-Control "no-cache"
