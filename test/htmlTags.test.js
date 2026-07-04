@@ -57,6 +57,20 @@ test("parseAttrs keeps an unterminated-quote value verbatim, not slicing it", ()
   assert.equal(parseAttrs(`x="`).get("x"), `"`);
 });
 
+test("parseAttrs keeps the first of a duplicated attribute, as the browser does", () => {
+  // A repeated attribute name is dropped by the HTML parser after the first, so
+  // the guards must judge a tag on the value the browser actually uses. Reading
+  // the last would let `type="module" type="application/ld+json"` hide an
+  // executable inline script from the CSP guard, or a duplicated `content` swap
+  // the meta CSP the guard validates for the one the browser enforces.
+  const script = parseAttrs(`type="module" type="application/ld+json"`);
+  assert.equal(script.get("type"), "module");
+  assert.equal(script.size, 1);
+
+  const meta = parseAttrs(`content="strict" content="loose"`);
+  assert.equal(meta.get("content"), "strict");
+});
+
 // --- htmlTags ---------------------------------------------------------------
 
 test("htmlTags yields each tag as { raw, attrs } in document order", () => {
