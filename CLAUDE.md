@@ -224,11 +224,13 @@ editing:
 - The other security headers (`Strict-Transport-Security`,
   `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
   `Permissions-Policy`, the cross-origin isolation trio
-  `Cross-Origin-Opener-Policy`/`Cross-Origin-Embedder-Policy`/`Cross-Origin-Resource-Policy`,
-  and a `Header always unset Server`) and caching rules (long-cache for
-  static images, no-cache for HTML/CSS/JS) also live in `.htaccess`. None of
-  these apply under the python dev server; verify them after a deploy with
-  `curl -sI https://acurioustale.de/`.
+  `Cross-Origin-Opener-Policy`/`Cross-Origin-Embedder-Policy`/`Cross-Origin-Resource-Policy`)
+  and caching rules (long-cache for static images, no-cache for HTML/CSS/JS)
+  also live in `.htaccess`. There is deliberately no `Header unset Server`:
+  mod_headers can't remove the core Server banner from `.htaccess`, and the host
+  already sets `ServerTokens Prod` (so only a bare `Apache` token, no version, is
+  exposed) — see the comment in `.htaccess`. None of these apply under the python
+  dev server; verify them after a deploy with `curl -sI https://acurioustale.de/`.
 - `.htaccess` is in the deploy set and ships to the web root; the rsync jail's
   path prefix already covers it, so no server-side change is needed.
 
