@@ -26,6 +26,17 @@ test("still injects the toggle when the MediaQueryList lacks addEventListener (S
   );
 });
 
+test("injects no toggle when matchMedia is unavailable, without throwing", async () => {
+  const { document } = await loadModule("js/theme-toggle.js", {
+    noMatchMedia: true,
+  });
+  assert.equal(
+    document.querySelector(".theme-toggle"),
+    null,
+    "without matchMedia the toggle degrades to nothing instead of throwing",
+  );
+});
+
 test("clicking cycles auto → light → dark → auto and persists each step", async () => {
   const { document, window } = await loadModule("js/theme-toggle.js", {
     prefersLight: false,

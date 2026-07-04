@@ -11,7 +11,12 @@ import {
 // and hands control back to the OS preference.
 const root = document.documentElement;
 const bar = document.querySelector(".titlebar");
-if (bar) {
+// Require matchMedia: the toggle reads the OS colour scheme through it to drive
+// both the cycle order and the live label, so without it there's nothing to
+// build. Guarding here (like terminal.js does for its own matchMedia use) lets
+// the module degrade to no toggle instead of throwing on the query below —
+// CSS's prefers-color-scheme still drives the colours regardless.
+if (bar && window.matchMedia) {
   const GLYPH = { auto: "◐", light: "☼", dark: "☾" };
 
   // The OS scheme drives both the cycle order and the live label, so query it
