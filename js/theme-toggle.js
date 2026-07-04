@@ -111,6 +111,11 @@ if (bar) {
   // originating tab already persisted the value, so we only reflect it — no
   // write back, no cross-tab storage-event loop.
   window.addEventListener("storage", function (e) {
+    // Only localStorage drives the theme: ignore a sessionStorage change in
+    // another same-origin tab, which fires the same event but must not flip our
+    // scheme. storageArea is absent on some very old browsers, so reject only a
+    // present-but-different area (falling through when it's unset, as before).
+    if (e.storageArea && e.storageArea !== localStorage) return;
     // key === null means the whole store was cleared (localStorage.clear());
     // its newValue is null too, so it normalises to auto — hand control back to
     // the OS, same as another tab choosing auto.
