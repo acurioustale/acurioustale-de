@@ -16,6 +16,7 @@ import { createHash } from "node:crypto";
 import { inlineScripts, scriptElements } from "./inline-scripts.mjs";
 import { findTags, countRawTextOpeners } from "./html-tags.mjs";
 import { readHeaderCsp } from "./htaccess-csp.mjs";
+import { parseCsp, comparePolicies } from "./csp-directives.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const htaccess = await readFile(
@@ -50,31 +51,6 @@ const policies = [
   { name: "index.html <meta> CSP", csp: metaCsp },
   { name: ".htaccess header CSP", csp: headerCsp },
 ];
-
-// A CSP as a map of directive name -> set of values, so the two policies can be
-// compared directive by directive, order- and whitespace-insensitively.
-//
-// When a directive name is repeated WITHIN a single policy, the browser honours
-// the FIRST occurrence and ignores the rest (CSP "parse a serialized policy":
-// a duplicate directive name is discarded). So keep the first, not the last: a
-// drifted `script-src *; …; script-src 'self' 'sha256-…'` is enforced as the
-// permissive `*`, and reading the last (restrictive) copy would let this guard
-// green-light a policy the browser actually serves wide open. (This is the
-// opposite of the .htaccess `Header set` case above, where Apache serves the
-// last of repeated headers — hence the two are scanned differently.)
-function parseCsp(csp) {
-  const directives = new Map();
-  for (const part of csp.split(";")) {
-    const [name, ...values] = part.trim().split(/\s+/).filter(Boolean);
-    const key = name?.toLowerCase();
-    if (key && !directives.has(key)) directives.set(key, new Set(values));
-  }
-  return directives;
-}
-
-// Directives the .htaccess header carries that a <meta> CSP cannot express: the
-// header is allowed to add exactly these on top of the <meta> baseline.
-const HEADER_ONLY = new Set(["frame-ancestors", "upgrade-insecure-requests"]);
 
 // The JavaScript MIME type essences the browser executes as a classic script
 // (the WHATWG MIME-sniffing set, including the legacy aliases). Compared against
@@ -117,23 +93,6 @@ function isExecutableJs(rawType) {
   return JS_MIME_ESSENCES.has(essence);
 }
 
-// Human-readable list of directives that differ between two CSP maps (a
-// directive present in only one, or present in both with differing values).
-function directiveDiff(meta, header) {
-  const diffs = [];
-  for (const name of new Set([...meta.keys(), ...header.keys()])) {
-    const m = meta.get(name);
-    const h = header.get(name);
-    if (!m) diffs.push(`${name}: only in .htaccess`);
-    else if (!h) diffs.push(`${name}: only in <meta>`);
-    else if (m.size !== h.size || ![...m].every((v) => h.has(v)))
-      diffs.push(
-        `${name}: <meta> [${[...m].join(" ")}] vs .htaccess [${[...h].join(" ")}]`,
-      );
-  }
-  return diffs;
-}
-
 let failed = false;
 if (scopesUnbalanced) {
   failed = true;
@@ -151,30 +110,18 @@ if (failed) {
   process.exitCode = 1;
 } else {
   // The two policies must stay in lock-step: the header is the <meta> baseline
-  // plus the directives a meta CSP can't express. Strip those header-only
-  // directives, then the rest must match exactly, so loosening or dropping a
-  // directive in only one file is caught — not just a drifted script hash.
-  const headerDirectives = parseCsp(headerCsp);
-
-  // The header-only directives are excluded from the diff below because a
-  // <meta> CSP can't express them — but excluding them from the comparison
-  // means their absence would otherwise go unnoticed, so assert they are
-  // actually present. Without this, deleting frame-ancestors or
-  // upgrade-insecure-requests from .htaccess would pass the guard, silently
-  // dropping the clickjacking and HTTPS-upgrade protections in production.
-  for (const name of HEADER_ONLY) {
-    if (!headerDirectives.has(name)) {
-      failed = true;
-      console.error(
-        `check-csp: the .htaccess header is missing the required directive: ${name}`,
-      );
-    }
+  // plus the directives a meta CSP can't express. comparePolicies strips those
+  // header-only directives from both sides — so adding one to the <meta> too is
+  // not read as a mismatch — while still asserting the header actually carries
+  // them, and diffs the rest so loosening or dropping a directive in only one
+  // file is caught, not just a drifted script hash.
+  const { missingHeaderOnly, diffs } = comparePolicies(metaCsp, headerCsp);
+  for (const name of missingHeaderOnly) {
+    failed = true;
+    console.error(
+      `check-csp: the .htaccess header is missing the required directive: ${name}`,
+    );
   }
-
-  const headerBaseline = new Map(
-    [...headerDirectives].filter(([name]) => !HEADER_ONLY.has(name)),
-  );
-  const diffs = directiveDiff(parseCsp(metaCsp), headerBaseline);
   if (diffs.length) {
     failed = true;
     console.error(
