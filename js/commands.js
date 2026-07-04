@@ -71,22 +71,22 @@ export function formatUptime(ms) {
 
 // Handle the commands terminal.js doesn't render as a block. A few produce real
 // output (sudo's lecture, a bare ls listing, uptime, date, echo); the rest get
-// the denial that fits: privileged → permission denied, ls of any path errors
-// like ls, anything else where the command name is a path → no such file,
-// otherwise command not found.
+// the denial that fits: privileged → permission denied, otherwise bash's own
+// naming for an unknown command (see unknownCommand).
 
 // A Set, not a plain object: a plain object would match inherited
 // Object.prototype members (toString, constructor, …) as commands. Kept at
 // module scope to avoid reallocating the Set on every command execution.
 const PRIV = new Set(["su", "doas", "chmod", "chown"]);
 
-export function reply(cmd) {
-  const cleanCmd = cmd.trim();
-  if (!cleanCmd) return "";
-  const argv = cleanCmd.split(/\s+/);
-  if (PRIV.has(argv[0])) return argv[0] + ": permission denied";
-  if (argv[0] === "sudo") {
-    return [
+// The commands that produce real output, as name → handler(argv) returning its
+// stdout. A table, like STATIC_BLOCKS/ADVERTISED_COMMANDS, so the working set is
+// data in one place rather than a chain of equality branches; dispatch below
+// uses Object.hasOwn so an inherited member name (constructor, toString) can't
+// match a handler.
+const HANDLERS = {
+  sudo: () =>
+    [
       "We trust you have received the usual lecture from the local System",
       "Administrator. It usually boils down to these three things:",
       "",
@@ -95,23 +95,34 @@ export function reply(cmd) {
       "    #3) With great power comes great responsibility.",
       "",
       "guest is not in the sudoers file.  This incident will be reported.",
-    ].join("\n");
-  }
-  if (argv[0] === "ls") {
-    if (argv.length < 2) return "projects/ whoami.sh";
-    return "ls: " + argv.slice(1).join(" ") + ": No such file or directory";
-  }
-  if (argv[0] === "uptime") {
-    return formatUptime(Date.now() - LAST_DEPLOY);
-  }
-  if (argv[0] === "date") {
-    return new Date().toString();
-  }
-  if (argv[0] === "echo") {
-    return argv.slice(1).join(" ");
-  }
-  if (argv[0].includes("/")) {
-    return "bash: " + argv[0] + ": No such file or directory";
-  }
-  return "bash: " + argv[0] + ": command not found";
+    ].join("\n"),
+  ls: (argv) =>
+    argv.length < 2
+      ? "projects/ whoami.sh"
+      : "ls: " + argv.slice(1).join(" ") + ": No such file or directory",
+  uptime: () => formatUptime(Date.now() - LAST_DEPLOY),
+  date: () => new Date().toString(),
+  echo: (argv) => argv.slice(1).join(" "),
+};
+
+// Deny an unknown command the way bash names the failure — its own rule, not an
+// arbitrary check: a command name containing a slash is a pathname bash tries to
+// exec directly, so a missing one is "No such file or directory", while a bare
+// word is searched on PATH, so it's "command not found". Keyed on the command
+// name only; a working command's own path operands (ls projects/) are handled
+// in HANDLERS above before this is reached.
+function unknownCommand(name) {
+  return name.includes("/")
+    ? "bash: " + name + ": No such file or directory"
+    : "bash: " + name + ": command not found";
+}
+
+export function reply(cmd) {
+  const cleanCmd = cmd.trim();
+  if (!cleanCmd) return "";
+  const argv = cleanCmd.split(/\s+/);
+  const name = argv[0];
+  if (PRIV.has(name)) return name + ": permission denied";
+  if (Object.hasOwn(HANDLERS, name)) return HANDLERS[name](argv);
+  return unknownCommand(name);
 }
