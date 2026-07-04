@@ -298,7 +298,13 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
   // the user is clicking a link or selecting text to copy.
   screen.addEventListener("click", function (e) {
     if (e.target.closest("a")) return;
-    if (window.getSelection && window.getSelection().toString().length > 0)
+    // Only a selection made *inside* the terminal (the user highlighting output
+    // to copy) should suppress focus-stealing. A selection elsewhere on the page
+    // must not eat the click that is meant to start typing here, so scope the
+    // guard to the screen via its anchor node rather than treating any
+    // page-global selection as ours.
+    const sel = window.getSelection && window.getSelection();
+    if (sel && sel.toString().length > 0 && screen.contains(sel.anchorNode))
       return;
     // preventScroll like the load focus: without it, focusing the prompt (at the
     // bottom of the frozen screen) yanks the scrollback down, discarding where
