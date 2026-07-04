@@ -161,9 +161,9 @@ import { fileURLToPath } from "node:url";
 // dispatches, so the two can't drift. Rather than hand-maintain a list of those
 // commands (which silently goes stale the moment terminal.js gains a branch),
 // derive it from the source: the literals terminal.js special-cases in its run()
-// dispatch (cmd === "...") and the ones commands.js reply() produces real output
-// for (argv[0] === "..."). The privileged denials sit in a Set, matched with
-// .has() rather than an equality check, so they're correctly left out.
+// dispatch (cmd === "...") and the handler names in commands.js reply()'s
+// HANDLERS table (name: (…) =>). The privileged denials sit in a Set, matched
+// with .has() rather than a handler, so they're correctly left out.
 const readSrc = (rel) =>
   readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
 
@@ -175,7 +175,7 @@ const terminalHandled = literals(
 );
 const replyHandled = literals(
   readSrc("../js/commands.js"),
-  /argv\[0\] === "([^"]+)"/g,
+  /(\w+): \([^)]*\) =>/g,
 );
 
 // The filesystem entries you discover with `ls` and run directly (`./whoami.sh`,
@@ -197,7 +197,7 @@ test("the dispatch sets are derived from the modules and non-empty", () => {
   );
   assert.ok(
     replyHandled.size > 0,
-    'extracted no `argv[0] === "..."` from commands.js - update the dispatch regex',
+    "extracted no HANDLERS entries (`name: (…) =>`) from commands.js - update the dispatch regex",
   );
 });
 
