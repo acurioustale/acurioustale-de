@@ -153,52 +153,42 @@ test("Object.prototype member names are command not found, not privileged", () =
   }
 });
 
-import { ADVERTISED_COMMANDS, STATIC_BLOCKS } from "../js/commands.js";
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import {
+  ADVERTISED_COMMANDS,
+  STATIC_BLOCKS,
+  HANDLERS,
+  DOM_COMMANDS,
+} from "../js/commands.js";
 
 // These cross-checks bind help()'s listing to the commands the code actually
 // dispatches, so the two can't drift. Rather than hand-maintain a list of those
-// commands (which silently goes stale the moment terminal.js gains a branch),
-// derive it from the source: the literals terminal.js special-cases in its run()
-// dispatch (cmd === "...") and the handler names in commands.js reply()'s
-// HANDLERS table (name: (…) =>). The privileged denials sit in a Set, matched
-// with .has() rather than a handler, so they're correctly left out.
-const readSrc = (rel) =>
-  readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
-
-const literals = (src, re) => new Set([...src.matchAll(re)].map((m) => m[1]));
-
-const terminalHandled = literals(
-  readSrc("../js/terminal.js"),
-  /\bcmd === "([^"]+)"/g,
-);
-const replyHandled = literals(
-  readSrc("../js/commands.js"),
-  /(\w+): \([^)]*\) =>/g,
-);
+// commands (which silently goes stale the moment a module gains a branch), read
+// it straight off the real dispatch tables: HANDLERS (the commands reply()
+// returns output for) and DOM_COMMANDS (the ones terminal.js's run() dispatches
+// itself because they touch the DOM — clear, help). Binding to the exported
+// objects rather than scraping source means a formatting change or a second
+// arrow-valued object can't skew the set, and terminal.js dispatches through the
+// same DOM_COMMANDS values so its branches can't drift from this table either.
+// The privileged denials sit in a Set matched with .has(), not a handler, so
+// they're correctly left out.
 
 // The filesystem entries you discover with `ls` and run directly (`./whoami.sh`,
 // `ls projects`) — unadvertised, handled by terminal.js via STATIC_BLOCKS.
 const ALIASES = new Set(Object.keys(STATIC_BLOCKS));
 
 // Every command dispatched across the two modules (aliases aside).
-const dispatched = new Set([...terminalHandled, ...replyHandled]);
+const dispatched = new Set([
+  ...Object.keys(HANDLERS),
+  ...Object.values(DOM_COMMANDS),
+]);
 
 const advertised = Object.keys(ADVERTISED_COMMANDS);
 
-// Guard the derivation itself: if a refactor changes how the modules dispatch
-// so the regexes match nothing, the sets would be empty and the cross-checks
-// below would pass vacuously — fail loudly instead so the regex gets updated.
-test("the dispatch sets are derived from the modules and non-empty", () => {
-  assert.ok(
-    terminalHandled.size > 0,
-    'extracted no `cmd === "..."` from terminal.js - update the dispatch regex',
-  );
-  assert.ok(
-    replyHandled.size > 0,
-    "extracted no HANDLERS entries (`name: (…) =>`) from commands.js - update the dispatch regex",
-  );
+// Guard the derivation itself: an empty table would make the cross-checks below
+// pass vacuously, so fail loudly if either dispatch table is somehow empty.
+test("the dispatch tables are non-empty", () => {
+  assert.ok(Object.keys(HANDLERS).length > 0, "HANDLERS is empty");
+  assert.ok(Object.keys(DOM_COMMANDS).length > 0, "DOM_COMMANDS is empty");
 });
 
 test("every command help() lists is actually dispatched by terminal.js or commands.js", () => {

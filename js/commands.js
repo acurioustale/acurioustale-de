@@ -26,6 +26,14 @@ export const STATIC_BLOCKS = {
   "ls projects": ".projects",
 };
 
+// The commands terminal.js dispatches itself rather than through reply(),
+// because they act on the DOM: `clear` wipes the screen and `help` renders the
+// aligned help() listing as a preformatted block. Named here beside the other
+// command tables (and consumed by terminal.js's run() dispatch) so the
+// help/dispatch drift guard binds to this data instead of scraping terminal.js's
+// source for `cmd === "…"` literals.
+export const DOM_COMMANDS = { clear: "clear", help: "help" };
+
 // Resolve a whitespace-normalized command line to the static block it reprints
 // (the whoami card or the projects list), or undefined when it isn't one. The
 // trailing-slash rule lives here, next to STATIC_BLOCKS, rather than in the DOM
@@ -83,8 +91,9 @@ const PRIV = new Set(["su", "doas", "chmod", "chown"]);
 // stdout. A table, like STATIC_BLOCKS/ADVERTISED_COMMANDS, so the working set is
 // data in one place rather than a chain of equality branches; dispatch below
 // uses Object.hasOwn so an inherited member name (constructor, toString) can't
-// match a handler.
-const HANDLERS = {
+// match a handler. Exported so the help/dispatch drift guard binds to the real
+// table (Object.keys) rather than scraping this file's source text.
+export const HANDLERS = {
   sudo: () =>
     [
       "We trust you have received the usual lecture from the local System",
