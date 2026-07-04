@@ -114,32 +114,57 @@ export function* rawTextElements(html, name) {
   }
 }
 
+// A whole tag (any name) or an HTML comment anchored at the current `<`, quotes
+// balanced so an inner `>` doesn't end it early. Used to step over everything
+// that is NOT a `<name` opener — other elements and comments — so a `<name`
+// literal sitting inside their markup (a `<script` in a `<meta content="…">`
+// value, or in a `<!-- … -->`) is walked past, not read as an opener. It omits
+// openTag's lone-`["']` fallback on purpose: a start tag with an unbalanced
+// quote fails to match here, so it falls to the opener/stray branches rather
+// than being consumed as a well-formed tag.
+const TAG_OR_COMMENT =
+  /<!--[\s\S]*?-->|<\/?[a-zA-Z][^>"']*(?:(?:"[^"]*"|'[^']*')[^>"']*)*>/y;
+
 // How many `<name` start-tag openers `html` contains, counted on the same basis
-// rawTextElements consumes them: after each opener its raw-text body (everything
-// up to the next close tag) is skipped before the next opener is sought. So a
-// `<name` sitting inside another element's body — a `<script>` literal in a
-// JSON-LD block or in another script's source — is not miscounted as its own
-// opener, and neither is one a body scan swallows from inside a comment or an
-// attribute value. This shares the boundary and close-tag rules above, so a guard
-// can assert "every opener parsed into an element" without re-deriving the `<name`
-// regex and drifting from it. An opener whose start tag is malformed (an
-// unbalanced quote leaves its `>` unmatchable) is still counted here but dropped
-// by rawTextElements — exactly the divergence a fail-closed guard wants to catch.
+// rawTextElements consumes them. The scan walks the document `<` by `<`: an
+// opener is counted and its raw-text body (up to the next close tag) skipped;
+// any other well-formed tag or comment is stepped over whole; a stray `<` that
+// starts neither advances one char. So a `<name` literal inside another
+// element's attribute value or body (a `<script>` in a JSON-LD block or in
+// another script's source), or inside a comment, is not miscounted as its own
+// opener. This shares the boundary and close-tag rules above, so a guard can
+// assert "every opener parsed into an element" without re-deriving the `<name`
+// regex and drifting from it. An opener that forms no element — an unclosed
+// `<script>` with no `</script>`, or a start tag too malformed for
+// rawTextElements to parse — is still counted here, exactly the divergence a
+// fail-closed guard wants to catch.
 export function countRawTextOpeners(html, name) {
-  const opener = new RegExp(`<${name}${NAME_BOUNDARY}`, "gi");
+  const opener = new RegExp(`<${name}${NAME_BOUNDARY}`, "iy");
   const close = new RegExp(closeTag(name), "gi");
   let count = 0;
   let pos = 0;
   for (;;) {
-    opener.lastIndex = pos;
-    const m = opener.exec(html);
-    if (!m) break;
-    count += 1;
-    // Raw text ends at the next close tag (a browser closes a raw-text element at
-    // the first `</name`), so seek the next opener past it; no close → EOF.
-    close.lastIndex = m.index + m[0].length;
-    const c = close.exec(html);
-    pos = c ? close.lastIndex : html.length;
+    const lt = html.indexOf("<", pos);
+    if (lt < 0) break;
+    opener.lastIndex = lt;
+    TAG_OR_COMMENT.lastIndex = lt;
+    const tag = TAG_OR_COMMENT.exec(html);
+    if (opener.test(html)) {
+      count += 1;
+      // Raw text ends at the next close tag (a browser closes a raw-text element
+      // at the first `</name`), so seek the next opener past it; no close → EOF.
+      // A malformed start tag matched nothing above, so skip from just past `<`.
+      close.lastIndex = lt + (tag ? tag[0].length : 1);
+      const c = close.exec(html);
+      pos = c ? close.lastIndex : html.length;
+    } else if (tag) {
+      // A well-formed other tag or a comment: step over it whole so a `<name`
+      // in its attribute value or body isn't seen as an opener.
+      pos = lt + tag[0].length;
+    } else {
+      // A stray `<` that starts no tag: advance past it.
+      pos = lt + 1;
+    }
   }
   return count;
 }

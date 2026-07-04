@@ -199,3 +199,29 @@ test("countRawTextOpeners counts an unclosed opener and stops at end of input", 
 test("countRawTextOpeners returns 0 when there is no opener", () => {
   assert.equal(countRawTextOpeners("<p>hi</p>", "script"), 0);
 });
+
+test("countRawTextOpeners ignores a <script literal in another tag's attribute value", () => {
+  // A `<script` inside a `<meta content="…">` value (here after the last real
+  // script, so no body scan swallows it) must not be counted as its own opener,
+  // or the CSP guard false-alarms "malformed markup" on valid markup.
+  const html = `<script src="a.js"></script><meta content="try a <script tag">`;
+  assert.equal(countRawTextOpeners(html, "script"), 1);
+  assert.equal([...rawTextElements(html, "script")].length, 1);
+});
+
+test("countRawTextOpeners ignores a <script literal inside an HTML comment", () => {
+  const html = `<script>ok()</script><!-- <script> keep for reference -->`;
+  assert.equal(countRawTextOpeners(html, "script"), 1);
+});
+
+test("countRawTextOpeners still counts an unclosed opener with attributes", () => {
+  // A start tag with no `>` (and so no `</script>`) forms no element but is a
+  // real opener — the fail-closed divergence the CSP guard exists to catch.
+  const html = `<script src="a.js"`;
+  assert.equal(countRawTextOpeners(html, "script"), 1);
+  assert.equal([...rawTextElements(html, "script")].length, 0);
+});
+
+test("countRawTextOpeners walks past a stray < that starts no tag", () => {
+  assert.equal(countRawTextOpeners("a < b <script>x()</script>", "script"), 1);
+});
