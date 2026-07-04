@@ -92,6 +92,25 @@ test("./whoami.sh reprints the whoami card with its heading demoted", async () =
   assert.ok(clone.querySelector("p.name"), "the heading becomes a p.name");
 });
 
+test("./whoami.sh reprints links as plain text, not duplicate focusable anchors", async () => {
+  const { window, document } = await loadModule("js/terminal.js");
+  const input = document.querySelector(".cmd-input");
+  const log = document.querySelector(LOG);
+
+  submit(window, input, "./whoami.sh");
+  const clone = log.querySelector(".whoami");
+  assert.equal(
+    clone.querySelector("a"),
+    null,
+    "replayed links must be demoted so they add no duplicate tab stops",
+  );
+  assert.match(
+    clone.textContent,
+    /github\.com\/acurioustale/,
+    "the link text is preserved as plain text",
+  );
+});
+
 test("ls projects/ tolerates the trailing slash and reprints the list", async () => {
   const { window, document } = await loadModule("js/terminal.js");
   const input = document.querySelector(".cmd-input");
