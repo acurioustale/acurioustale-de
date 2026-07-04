@@ -53,6 +53,15 @@
   Header always set X-Frame-Options "DENY"
   Header always set Referrer-Policy "no-referrer"
   Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  # Cross-origin isolation trio. COOP severs cross-origin window.opener
+  # (tabnabbing / XS-Leaks) and CORP stops other origins embedding our resources
+  # — both active protections. COEP require-corp does nothing observable today:
+  # nothing here needs crossOriginIsolated (no SharedArrayBuffer, wasm threads or
+  # high-res timers), and the strict CSP (default-src 'none', only 'self') already
+  # blocks every cross-origin subresource, so COEP gates nothing CSP doesn't. It's
+  # kept to complete the isolation posture and future-proof it. Consequence: a
+  # cross-origin subresource added later needs a CORP/CORS grant to load, not just
+  # a CSP source entry.
   Header always set Cross-Origin-Opener-Policy "same-origin"
   Header always set Cross-Origin-Embedder-Policy "require-corp"
   Header always set Cross-Origin-Resource-Policy "same-origin"
