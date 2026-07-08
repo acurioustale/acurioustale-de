@@ -36,6 +36,9 @@ git ls-files -z --error-unmatch -- "${DEPLOY_ASSETS[@]}" |
 # git working directory untouched, avoiding dirty working trees or race conditions
 # with local dev servers. The trailing `// <ISO>` comment is regenerated from the
 # same instant so the human-readable form never drifts from the millisecond value.
+# The regex below and js/commands.js's LAST_DEPLOY declaration must agree;
+# test/lastDeployStamp.test.js binds them so a refactor that breaks the stamp
+# fails the gate rather than aborting this deploy after merge.
 echo "==> Updating deploy timestamp in staged js/commands.js"
 node -e '
 	const fs = require("fs");
