@@ -97,7 +97,43 @@ test("readHeaderCsp flags an unclosed container as unbalanced", () => {
 });
 
 test("readHeaderCsp returns undefined when no directive is present", () => {
-  const { headerCsp, scopesUnbalanced } = readHeaderCsp(`# nothing here`);
+  const { headerCsp, scopesUnbalanced, unsupportedHeaders } =
+    readHeaderCsp(`# nothing here`);
   assert.equal(headerCsp, undefined);
   assert.equal(scopesUnbalanced, false);
+  assert.deepEqual(unsupportedHeaders, []);
+});
+
+test("readHeaderCsp flags a Header append that combines with the served CSP", () => {
+  // `append` combines a value onto the existing header — the browser is served
+  // more than the `set` value, so validating the set alone would miss it.
+  const { headerCsp, unsupportedHeaders } = readHeaderCsp(
+    [
+      `Header set Content-Security-Policy "default-src 'none'"`,
+      `Header append Content-Security-Policy "script-src 'unsafe-inline'"`,
+    ].join("\n"),
+  );
+  assert.equal(headerCsp, "default-src 'none'");
+  assert.deepEqual(unsupportedHeaders, [
+    `Header append Content-Security-Policy "script-src 'unsafe-inline'"`,
+  ]);
+});
+
+test("readHeaderCsp flags a conditional set that is served only sometimes", () => {
+  // A trailing `env=`/`expr=` makes the header conditional; the guard would
+  // otherwise capture the value and validate it as unconditional.
+  const { unsupportedHeaders } = readHeaderCsp(
+    `Header set Content-Security-Policy "default-src 'none'" "expr=%{HTTP_HOST} == 'x'"`,
+  );
+  assert.deepEqual(unsupportedHeaders, [
+    `Header set Content-Security-Policy "default-src 'none'" "expr=%{HTTP_HOST} == 'x'"`,
+  ]);
+});
+
+test("readHeaderCsp does not flag the plain unconditional set form", () => {
+  const { headerCsp, unsupportedHeaders } = readHeaderCsp(
+    `Header always set Content-Security-Policy "default-src 'none'"`,
+  );
+  assert.equal(headerCsp, "default-src 'none'");
+  assert.deepEqual(unsupportedHeaders, []);
 });

@@ -44,8 +44,11 @@ const metaCsp = cspMeta?.attrs.get("content");
 // directive, requires the `Header set` form, takes the LAST live match (Apache's
 // `Header set` replaces, so the browser is served the last of repeated headers),
 // and ignores any directive inside a request-scoping container while flagging an
-// unbalanced structure so we fail closed rather than trust a mis-scoped read.
-const { headerCsp, scopesUnbalanced } = readHeaderCsp(htaccess);
+// unbalanced structure — or an unsupported CSP-touching Header form (append,
+// edit, or a conditional set) that would serve a policy other than the single
+// value read here — so we fail closed rather than trust a mis-read policy.
+const { headerCsp, scopesUnbalanced, unsupportedHeaders } =
+  readHeaderCsp(htaccess);
 
 const policies = [
   { name: "index.html <meta> CSP", csp: metaCsp },
@@ -98,6 +101,13 @@ if (scopesUnbalanced) {
   failed = true;
   console.error(
     "check-csp: .htaccess has unbalanced scoping containers — can't tell which Content-Security-Policy is the global one",
+  );
+}
+for (const line of unsupportedHeaders) {
+  failed = true;
+  console.error(
+    "check-csp: .htaccess has a CSP-touching Header directive this guard can't " +
+      `validate (only an unconditional \`set "…"\` is supported):\n  ${line}`,
   );
 }
 for (const { name, csp } of policies) {
