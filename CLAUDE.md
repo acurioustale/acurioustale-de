@@ -34,9 +34,10 @@ shell script incl. `ops/` (ShellCheck, shfmt, discovered via `git ls-files
 '*.sh'`), workflows (actionlint), JS/JSON/inline-HTML scripts (ESLint with
 `@eslint/json` and `eslint-plugin-html`), CSS (stylelint), Markdown
 (markdownlint-cli2); runs unit tests under a coverage gate (`node --test
---experimental-test-coverage`, via `npm run coverage`) and the CSP and og-image
-guards (`tools/check-csp.mjs`, `tools/check-og-image.mjs`). Deploys gate on all
-passing.
+--experimental-test-coverage`, via `npm run coverage`) and the CSP, og-image and
+asset-reference guards (`tools/check-csp.mjs`, `tools/check-og-image.mjs`,
+`tools/check-asset-refs.mjs` — the last asserts every local asset the markup and
+manifest reference exists as a tracked file). Deploys gate on all passing.
 
 Run the same checks locally with `./validate.sh` (needs `brew install vnu
 shellcheck shfmt actionlint` plus `npm install` for npm-only tools: Prettier,

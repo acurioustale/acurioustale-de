@@ -19,6 +19,7 @@
     "test:e2e": "playwright test",
     "check:csp": "node tools/check-csp.mjs",
     "check:og": "node tools/check-og-image.mjs",
+    "check:asset-refs": "node tools/check-asset-refs.mjs",
     "check:deploy-assets": "node tools/check-deploy-assets.mjs"
   },
   "devDependencies": {

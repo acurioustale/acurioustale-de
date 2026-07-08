@@ -144,13 +144,16 @@ jobs:
         run: npm run coverage
 
       # Fail if the inline theme guard's sha256 isn't in the CSP (so the policy
-      # can't drift), if the og-image isn't the declared 1200x630, and if a
-      # tracked site file is missing from deploy.sh's DEPLOY_ASSETS (so a new
-      # asset can't be silently left out of the deploy).
-      - name: Check CSP, og-image and deploy set
+      # can't drift), if the og-image isn't the declared 1200x630, if a local
+      # asset referenced by the markup/manifest doesn't exist (so a renamed
+      # favicon/icon/module can't 404), and if a tracked site file is missing
+      # from deploy.sh's DEPLOY_ASSETS (so a new asset can't be silently left out
+      # of the deploy).
+      - name: Check CSP, og-image, asset refs and deploy set
         run: |
           npm run check:csp
           npm run check:og
+          npm run check:asset-refs
           npm run check:deploy-assets
 
       # svgo keeps every tracked SVG optimised; the check fails if any would
