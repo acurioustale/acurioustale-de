@@ -79,6 +79,26 @@ test("comparePolicies reports a header missing a required header-only directive"
   assert.deepEqual(missingHeaderOnly, ["upgrade-insecure-requests"]);
 });
 
+test("comparePolicies flags a header-only directive weakened to a permissive value", () => {
+  // Present but weakened: `frame-ancestors *` still contains the directive, so a
+  // presence-only check waved it through. Its value must match the pinned 'none'.
+  const header = `${META}; frame-ancestors *; upgrade-insecure-requests`;
+  const { missingHeaderOnly, headerOnlyMismatches, diffs } = compare(
+    META,
+    header,
+  );
+  assert.deepEqual(missingHeaderOnly, []);
+  assert.deepEqual(diffs, []);
+  assert.deepEqual(headerOnlyMismatches, [
+    "frame-ancestors: expected ['none'] but .htaccess has [*]",
+  ]);
+});
+
+test("comparePolicies passes the pinned header-only values with no mismatch", () => {
+  const { headerOnlyMismatches } = compare(META, HEADER);
+  assert.deepEqual(headerOnlyMismatches, []);
+});
+
 test("comparePolicies still catches a real divergence in a shared directive", () => {
   const header = `default-src 'none'; script-src 'self' 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; upgrade-insecure-requests`;
   const { diffs } = compare(META, header);
