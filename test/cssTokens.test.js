@@ -17,6 +17,25 @@ test("lightDarkTokens maps each light-dark() token to its lower-cased pair", () 
   assert.deepEqual(tokens.get("accent"), { light: "#fff", dark: "#000" });
 });
 
+test("lightDarkTokens parses a declaration with whitespace before the colon", () => {
+  // CSS allows `--x : value`. Such a token must still be parsed, not silently
+  // dropped from the map — the drift guards would otherwise stop checking it.
+  const tokens = lightDarkTokens("--page-bg : light-dark(#e8e6df, #0e0f10);");
+  assert.deepEqual(tokens.get("page-bg"), {
+    light: "#e8e6df",
+    dark: "#0e0f10",
+  });
+});
+
+test("lightDarkTokens still hard-fails a spaced non-hex declaration", () => {
+  // The space-before-colon tolerance must not create a new silent-skip hole:
+  // a spaced declaration with a non-hex value is still caught by completeness.
+  assert.throws(
+    () => lightDarkTokens("--accent : light-dark(white, black);"),
+    /--accent/,
+  );
+});
+
 test("lightDarkTokens ignores non light-dark() custom properties", () => {
   const tokens = lightDarkTokens("--plain: #123456; --page-bg: #abcdef;");
   assert.equal(tokens.size, 0);

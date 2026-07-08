@@ -18,16 +18,24 @@ const HEX = "#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})";
 // `light-dark(` declaration in turn and treats a non-match as an unparseable
 // value, so a token redeclared with a non-hex value can't be waved through just
 // because an earlier hex declaration of the same token parsed.
+// `\s*` before the colon too: CSS permits whitespace between a property name and
+// its colon (`--x : light-dark(...)`), so a declaration written that way must
+// still parse. Without it the token matched neither pattern and was dropped from
+// the map silently — the drift guards that read the map would then stop checking
+// that token with no signal. (Prettier normalises the spacing away, so this was
+// latent, but the parser must not depend on the formatter having run.)
 const LIGHT_DARK = new RegExp(
-  `--([\\w-]+):\\s*light-dark\\(\\s*(${HEX})\\s*,\\s*(${HEX})\\s*\\)`,
+  `--([\\w-]+)\\s*:\\s*light-dark\\(\\s*(${HEX})\\s*,\\s*(${HEX})\\s*\\)`,
   "y",
 );
 
 // The start of a `--token: light-dark(` custom-property declaration, whatever the
 // value form. Used only to detect a declaration the hex pattern above can't
 // parse — see the completeness check below. (`color: light-dark(...)` inside an
-// `@supports` test isn't a custom property, so the `--` prefix skips it.)
-const LIGHT_DARK_DECL = /--([\w-]+):\s*light-dark\(/g;
+// `@supports` test isn't a custom property, so the `--` prefix skips it.) Same
+// optional whitespace before the colon as LIGHT_DARK, so the two stay in lockstep
+// on a spaced declaration.
+const LIGHT_DARK_DECL = /--([\w-]+)\s*:\s*light-dark\(/g;
 
 // Map(token → { light, dark }) for every light-dark() custom property in `css`,
 // with the hex values lower-cased so callers can compare without re-normalising.
