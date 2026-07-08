@@ -125,7 +125,7 @@ if (failed) {
   // not read as a mismatch — while still asserting the header actually carries
   // them, and diffs the rest so loosening or dropping a directive in only one
   // file is caught, not just a drifted script hash.
-  const { missingHeaderOnly, diffs } = comparePolicies(
+  const { missingHeaderOnly, headerOnlyMismatches, diffs } = comparePolicies(
     metaDirectives,
     headerDirectives,
   );
@@ -133,6 +133,12 @@ if (failed) {
     failed = true;
     console.error(
       `check-csp: the .htaccess header is missing the required directive: ${name}`,
+    );
+  }
+  for (const mismatch of headerOnlyMismatches) {
+    failed = true;
+    console.error(
+      `check-csp: a header-only directive drifted from its expected value: ${mismatch}`,
     );
   }
   if (diffs.length) {
