@@ -68,6 +68,20 @@ test("readHeaderCsp ignores a CSP inside a request-scoping container", () => {
   assert.equal(headerCsp, "global");
 });
 
+test("readHeaderCsp ignores a CSP inside a method-scoped <Limit> container", () => {
+  // A CSP inside <Limit GET> is served only for GET; it must not be read as the
+  // global policy, or a weaker method-scoped CSP would validate as unconditional.
+  const { headerCsp } = readHeaderCsp(
+    [
+      `Header set Content-Security-Policy "global"`,
+      `<Limit GET POST>`,
+      `  Header set Content-Security-Policy "scoped"`,
+      `</Limit>`,
+    ].join("\n"),
+  );
+  assert.equal(headerCsp, "global");
+});
+
 test("readHeaderCsp flags a stray close as unbalanced", () => {
   const { scopesUnbalanced } = readHeaderCsp(
     [`</Files>`, `Header set Content-Security-Policy "x"`].join("\n"),
