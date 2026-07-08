@@ -10,8 +10,12 @@
 // requests, so it must not be read as the global header. <IfModule>/<IfDefine>/
 // <IfVersion> are load-time conditionals rather than request scopes (the live
 // CSP itself sits inside <IfModule mod_headers.c>), so they stay transparent.
+// <Limit>/<LimitExcept> scope by HTTP method (both valid under AllowOverride
+// Limit): a CSP inside <Limit GET> would be served only for GET, so it too must
+// not be read as the global policy — omitting them let a method-scoped (and so
+// partly-absent) CSP validate as if it were unconditional.
 const SCOPING_SECTION =
-  /^(?:Files|FilesMatch|Directory|DirectoryMatch|Location|LocationMatch|If|ElseIf|Else|Proxy|ProxyMatch)$/i;
+  /^(?:Files|FilesMatch|Directory|DirectoryMatch|Location|LocationMatch|If|ElseIf|Else|Proxy|ProxyMatch|Limit|LimitExcept)$/i;
 
 // The `Header [always] set Content-Security-Policy "…"` value from `htaccess`,
 // plus whether its scoping containers balance. Returns
