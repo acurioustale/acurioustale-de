@@ -13,7 +13,7 @@
 // not a general HTML/Apache parser.
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { inlineScripts, scriptElements } from "./inline-scripts.mjs";
+import { isInlineScript, scriptElements } from "./inline-scripts.mjs";
 import { findTags, countRawTextOpeners } from "./html-tags.mjs";
 import { readHeaderCsp } from "./htaccess-csp.mjs";
 import { parseCsp, comparePolicies } from "./csp-directives.mjs";
@@ -172,18 +172,22 @@ if (failed) {
   // JSON-LD string, another script's source) or a comment is not miscounted — the
   // two agree except on a start tag that fails to parse, which is the divergence
   // this fails closed on.
+  // Parse the <script> elements once and reuse the list for both the count
+  // below and the inline selection further down, rather than scanning the markup
+  // twice.
+  const scriptEls = scriptElements(html);
   const openers = countRawTextOpeners(html, "script");
-  const parsed = scriptElements(html).length;
-  if (openers !== parsed) {
+  if (openers !== scriptEls.length) {
     failed = true;
     console.error(
-      `check-csp: ${openers} <script> start tag(s) but ${parsed} parsed as elements — malformed markup may hide an unhashed inline script`,
+      `check-csp: ${openers} <script> start tag(s) but ${scriptEls.length} parsed as elements — malformed markup may hide an unhashed inline script`,
     );
   }
 
   // Every inline <script> in index.html (external scripts are covered by
-  // script-src 'self' and carry no inline body to hash).
-  const scripts = inlineScripts(html);
+  // script-src 'self' and carry no inline body to hash), selected from the list
+  // already parsed above via the shared predicate.
+  const scripts = scriptEls.filter(isInlineScript);
 
   // The script-src value set of each policy, from the maps parsed above. An
   // inline script's hash is checked for membership here — in the directive that

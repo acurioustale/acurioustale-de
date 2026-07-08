@@ -14,15 +14,23 @@ export function scriptElements(html) {
   return [...rawTextElements(html, "script")];
 }
 
-// Inline scripts only — those with no src attribute. External scripts carry no
-// inline body to hash or inspect and are covered by script-src 'self'.
+// The inline-vs-external test for a single parsed <script> element: inline means
+// no src attribute. External scripts carry no inline body to hash or inspect and
+// are covered by script-src 'self'.
 //
 // Presence of the parsed `src` key is the whole test: a `src=` sitting inside
 // another attribute's value can't be mistaken for one (it isn't a top-level
 // attribute), and `data-src`/`x-src` are distinct keys — so a genuine inline
 // script is never dropped from enumeration and shipped unhashed. A valueless
 // `<script src>` (which fetches the current page rather than executing inline)
-// counts as external too, same as `src=""`.
+// counts as external too, same as `src=""`. Exported as a predicate so a caller
+// that already has the parsed element list (the CSP guard, which also needs the
+// element count) can select inline scripts without re-scanning the markup.
+export function isInlineScript({ attrs }) {
+  return !attrs.has("src");
+}
+
+// Inline scripts only, scanned straight from HTML.
 export function inlineScripts(html) {
-  return scriptElements(html).filter(({ attrs }) => !attrs.has("src"));
+  return scriptElements(html).filter(isInlineScript);
 }
