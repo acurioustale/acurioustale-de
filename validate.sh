@@ -150,6 +150,9 @@ npm run --silent check:csp
 step "Checking the og-image dimensions"
 npm run --silent check:og
 
+step "Checking referenced local assets exist"
+npm run --silent check:asset-refs
+
 step "Checking DEPLOY_ASSETS covers the tracked deploy set"
 npm run --silent check:deploy-assets
 
