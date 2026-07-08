@@ -74,8 +74,21 @@ rsync_excludes=(
 	--exclude='*~'
 )
 
+# The staged tree is the whole source, so --delete mirrors it exactly and prunes
+# everything else in the web root. That is what we want for anything the repo
+# owns, but the host — not this repo — owns the web root's `.well-known/`
+# directory: ACME (Let's Encrypt) challenge files and a hand-placed security.txt
+# live there. Without a guard, the next deploy would delete them. A `protect`
+# filter keeps --delete from pruning `.well-known/` while still leaving the rest
+# of the root a faithful mirror. It is a delete-time filter only (the dir is not
+# in the staged source, so nothing is sent), and like the excludes above it is a
+# client-side rule that never reaches the server-side rsync command the deploy
+# key's forced jail vets. Anchored with a leading slash to the transfer root, so
+# only the web root's own `.well-known/` is protected, not a nested one.
+rsync_protect=(--filter='protect /.well-known/')
+
 # One invocation for both the dry-run and real deploys so their flags and
 # endpoints can't drift. ${rsync_args[@]+"..."} expands to nothing when the
 # array is empty, staying safe under `set -u` on bash 3.2 (macOS default).
-rsync -avz --delete "${rsync_excludes[@]}" --chmod=D755,F644 \
+rsync -avz --delete "${rsync_excludes[@]}" "${rsync_protect[@]}" --chmod=D755,F644 \
 	${rsync_args[@]+"${rsync_args[@]}"} "$stage"/ "${REMOTE}:${TARGET}"
