@@ -37,8 +37,12 @@ if (mutations.length > 1 || mutations.some((m) => m.includes("+="))) {
 
 // Pull the entries out of the `DEPLOY_ASSETS=( ... )` array. Whitespace-separated
 // tokens (the array spans a single line in deploy.sh) with any inline comment
-// stripped, so this reads the same list the deploy stages.
-const arrayMatch = deploySh.match(/DEPLOY_ASSETS=\(([^)]*)\)/);
+// stripped, so this reads the same list the deploy stages. Anchored to the start
+// of a line (like the single-assignment guard above), so a `# DEPLOY_ASSETS=(…)`
+// example in a comment or docstring above the real array is not grabbed as the
+// list — an unanchored match would read the first occurrence anywhere, and the
+// two parses would then disagree about which line is authoritative.
+const arrayMatch = deploySh.match(/^\s*DEPLOY_ASSETS=\(([^)]*)\)/m);
 if (!arrayMatch) {
   console.error(
     "check-deploy-assets: could not find a DEPLOY_ASSETS=( ... ) array in deploy.sh",
