@@ -17,9 +17,23 @@
 const SCOPING_SECTION =
   /^(?:Files|FilesMatch|Directory|DirectoryMatch|Location|LocationMatch|If|ElseIf|Else|Proxy|ProxyMatch|Limit|LimitExcept)$/i;
 
+// A CSP-bearing Header line, and the one form this guard understands: a plain,
+// unconditional `Header [always] set Content-Security-Policy "…"` with nothing
+// trailing the quoted value. Anything else that touches the header serves the
+// browser something other than that single value — `append`/`edit`/`add`
+// combine with or rewrite the policy, and a trailing `env=`/`expr=` condition
+// makes the `set` apply only sometimes — so validating the lone value would
+// green-light a policy the server may actually serve weakened or not at all. The
+// guard flags such a line so the caller fails closed rather than trusting it.
+const CSP_HEADER_LINE = /^Header\b.*\bContent-Security-Policy\b/i;
+const SUPPORTED_CSP_SET =
+  /^Header\s+(?:always\s+)?set\s+Content-Security-Policy\s+"[^"]*"\s*$/i;
+
 // The `Header [always] set Content-Security-Policy "…"` value from `htaccess`,
-// plus whether its scoping containers balance. Returns
-// { headerCsp: string | undefined, scopesUnbalanced: boolean }.
+// plus whether its scoping containers balance and whether any unsupported
+// CSP-touching Header form is present. Returns
+// { headerCsp: string | undefined, scopesUnbalanced: boolean,
+//   unsupportedHeaders: string[] }.
 //
 // Takes the LAST live match, not the first: `Header set` replaces any earlier
 // header of the same name, so when two are present Apache serves the last —
@@ -38,6 +52,7 @@ export function readHeaderCsp(htaccess) {
   let headerCsp;
   let scopeDepth = 0;
   let scopesUnbalanced = false;
+  const unsupportedHeaders = [];
   for (const rawLine of lines) {
     const line = rawLine.trim();
     if (line.startsWith("#")) continue;
@@ -54,6 +69,12 @@ export function readHeaderCsp(htaccess) {
       continue;
     }
     if (scopeDepth > 0) continue;
+    // A CSP-touching Header line that is not the plain `set "…"` form serves a
+    // policy this guard can't read from a single value — flag it to fail closed.
+    if (CSP_HEADER_LINE.test(line) && !SUPPORTED_CSP_SET.test(line)) {
+      unsupportedHeaders.push(line);
+      continue;
+    }
     const match = line.match(
       /^Header\s+(?:always\s+)?set\s+Content-Security-Policy\s+"([^"]*)"/i,
     );
@@ -64,5 +85,5 @@ export function readHeaderCsp(htaccess) {
   // An unclosed container leaves the depth above zero, having swallowed every
   // directive below it as nested — the global CSP among them included.
   if (scopeDepth !== 0) scopesUnbalanced = true;
-  return { headerCsp, scopesUnbalanced };
+  return { headerCsp, scopesUnbalanced, unsupportedHeaders };
 }
