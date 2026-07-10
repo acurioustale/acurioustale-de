@@ -6,7 +6,10 @@
 // once: either it ships (covered by a DEPLOY_ASSETS entry) or it is explicitly
 // dev-only. A file that is neither fails the build, so adding a new asset means
 // consciously deciding ship-or-not rather than silently defaulting to "not
-// shipped". Run from validate.sh and deploy.yml.
+// shipped". On top of that it binds deploy.yml's `paths-ignore` (the list that
+// skips a needless redeploy on dev-only changes) to the same classification, so
+// that list can't drift into skipping a real deploy or redeploying for nothing.
+// Run from validate.sh and deploy.yml.
 //
 // Dependency-free on purpose: it parses the array straight out of deploy.sh (the
 // one source of truth the deploy itself reads) and lists tracked files via git,
@@ -154,10 +157,101 @@ if (unclassified.length) {
   for (const f of unclassified) console.error(`  ${f}`);
 }
 
+// ── Bind deploy.yml's paths-ignore to the same dev-only classification ──
+// deploy.yml skips the post-merge redeploy (and its LAST_DEPLOY re-stamp, which
+// resets the terminal's `uptime`) when a push to main touches only files the site
+// never ships, via an `on.push.paths-ignore` list. That YAML list can't be
+// computed from the classification above, so it drifts: a dev-only file missing
+// from it needlessly redeploys, and — worse — a shipped file wrongly listed there
+// would SKIP a real deploy. Bind the two so neither can happen: every tracked
+// file must be ignored by the workflow exactly when it is dev-only.
+const workflow = await readFile(
+  new URL(".github/workflows/deploy.yml", root),
+  "utf8",
+);
+
+// Exactly one `paths-ignore:` block is expected (under on.push). More than one
+// means the layout changed and this single-block read would cover only part of
+// it, so fail loudly rather than under-checking (like the DEPLOY_ASSETS
+// single-assignment guard above).
+const ignoreBlocks = workflow.match(/^\s*paths-ignore:\s*$/gm) ?? [];
+if (ignoreBlocks.length !== 1) {
+  console.error(
+    "check-deploy-assets: expected exactly one `paths-ignore:` block in\n" +
+      `  .github/workflows/deploy.yml, found ${ignoreBlocks.length}. Extend the\n` +
+      "  parser to read them all before trusting this check.",
+  );
+  process.exit(1);
+}
+
+// The list items following `paths-ignore:` — each `- "<glob>"` line, quotes
+// stripped — up to the first line that is not a list item (the next YAML key).
+// Comment lines inside the block are skipped.
+const ignorePatterns = [];
+let inIgnoreBlock = false;
+for (const line of workflow.split("\n")) {
+  if (/^\s*paths-ignore:\s*$/.test(line)) {
+    inIgnoreBlock = true;
+    continue;
+  }
+  if (!inIgnoreBlock) continue;
+  if (/^\s*#/.test(line)) continue; // a comment inside the block
+  const item = line.match(/^\s*-\s*(.+?)\s*$/);
+  if (!item) break; // first non-item line ends the block
+  ignorePatterns.push(item[1].replace(/^["']|["']$/g, ""));
+}
+
+// Translate a paths-ignore glob to a predicate over a repo-relative path, for the
+// three shapes this workflow uses: a trailing `/**` directory prefix, a leading
+// `**.<ext>` suffix, and an exact file path. Each mirrors how the classification
+// above matches (DEV_ONLY_DIRS by prefix, DEV_ONLY_EXTENSIONS by suffix,
+// DEV_ONLY_FILES exactly). An unfamiliar shape is a hard error rather than a
+// silently-wrong match.
+function ignoreMatcher(pattern) {
+  if (pattern.endsWith("/**")) {
+    const dir = pattern.slice(0, -"/**".length);
+    return (path) => path.startsWith(dir + "/");
+  }
+  if (pattern.startsWith("**.")) {
+    const suffix = pattern.slice("**".length); // ".md"
+    return (path) => path.endsWith(suffix);
+  }
+  if (!/[*?[\]]/.test(pattern)) {
+    return (path) => path === pattern;
+  }
+  console.error(
+    `check-deploy-assets: unsupported paths-ignore pattern "${pattern}" in\n` +
+      "  .github/workflows/deploy.yml — extend ignoreMatcher to translate it.",
+  );
+  process.exit(1);
+}
+const ignoreMatchers = ignorePatterns.map(ignoreMatcher);
+const ignoredByWorkflow = (path) => ignoreMatchers.some((m) => m(path));
+
+// Every tracked file must be ignored by the workflow exactly when it is dev-only.
+const deployDrift = tracked.filter(
+  (f) => ignoredByWorkflow(f) !== isDevOnly(f),
+);
+if (deployDrift.length) {
+  failed = true;
+  console.error(
+    "check-deploy-assets: deploy.yml paths-ignore has drifted from the dev-only\n" +
+      "  classification. A shipped file listed there would SKIP a real deploy; a\n" +
+      "  dev-only file missing there needlessly redeploys and resets `uptime`:",
+  );
+  for (const f of deployDrift) {
+    console.error(
+      isDevOnly(f)
+        ? `  ${f}: dev-only but NOT ignored — add it to deploy.yml paths-ignore`
+        : `  ${f}: shipped but IGNORED — remove it from deploy.yml paths-ignore`,
+    );
+  }
+}
+
 if (failed) {
   process.exitCode = 1;
 } else {
   console.log(
-    `check-deploy-assets: DEPLOY_ASSETS covers every shipped file (${tracked.length} tracked files classified)`,
+    `check-deploy-assets: DEPLOY_ASSETS and deploy.yml paths-ignore both match the dev-only split (${tracked.length} tracked files classified)`,
   );
 }
