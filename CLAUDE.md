@@ -243,8 +243,9 @@ Pushing to `main` auto-deploys via `.github/workflows/deploy.yml`, which runs
 `robots.txt`, `sitemap.xml`, `humans.txt`, `manifest.webmanifest`, `css/`, `js/`,
 `assets/`) into a temporary staging directory, stamps the current
 Unix-millisecond time into `LAST_DEPLOY` in the **staged** `js/commands.js` (so
-the terminal's `uptime` counts from the live deploy), then mirrors staging to the
-host with `rsync -avz --delete`. Staging means the git working tree is never
+the terminal's `uptime` counts from the live deploy) and the same instant into the
+staged `index.html`'s "Last login" banner (so it can't drift from that `uptime`),
+then mirrors staging to the host with `rsync -avz --delete`. Staging means the git working tree is never
 modified — no dirty files, no restore-on-exit races. The `deploy` job therefore
 sets up Node (for stamping) in addition to SSH. CI authenticates with the
 `DEPLOY_SSH_KEY` / `DEPLOY_KNOWN_HOSTS` repo secrets. The workflow sets
