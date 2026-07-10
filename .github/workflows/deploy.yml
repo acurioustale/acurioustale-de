@@ -10,6 +10,14 @@ on:
     # paths allowlist, which would silently drop a deploy if it drifted from the
     # deploy set). The change was already linted and tested by the pull_request
     # trigger below before it merged.
+    #
+    # This list must cover EVERY never-shipped file, or a change to one that's
+    # missing here (a deps bump, a lint-config tweak, og-image.src.svg) needlessly
+    # redeploys and resets `uptime`. tools/check-deploy-assets.mjs binds it to the
+    # dev-only classification: every tracked file must be ignored here exactly when
+    # it is dev-only, so a shipped file can never be listed (which would skip a
+    # real deploy) and a new dev-only file can't be forgotten. Keep the entries in
+    # sync with that guard's DEV_ONLY_DIRS / DEV_ONLY_EXTENSIONS / DEV_ONLY_FILES.
     paths-ignore:
       - "**.md"
       - ".claude/**"
@@ -18,6 +26,23 @@ on:
       - "ops/**"
       - "test/**"
       - "tools/**"
+      - ".editorconfig"
+      - ".git-blame-ignore-revs"
+      - ".gitignore"
+      - ".markdownlint-cli2.jsonc"
+      - ".prettierignore"
+      - ".stylelintrc.json"
+      - ".tool-versions"
+      - "LICENSE"
+      - "deploy.sh"
+      - "eslint.config.mjs"
+      - "lychee.toml"
+      - "og-image.src.svg"
+      - "package-lock.json"
+      - "package.json"
+      - "playwright.config.js"
+      - "svgo.config.mjs"
+      - "validate.sh"
   pull_request:
   workflow_dispatch:
     inputs:
