@@ -31,18 +31,22 @@ DEPLOY_ASSETS=(index.html .htaccess robots.txt sitemap.xml humans.txt manifest.w
 git ls-files -z --error-unmatch -- "${DEPLOY_ASSETS[@]}" |
 	rsync --from0 --files-from=- -a ./ "$stage"/
 
-# Stamp the deploy time directly into the staged js/commands.js so the live
-# site's `uptime` counts from this deploy. Stamping the staged copy leaves the
-# git working directory untouched, avoiding dirty working trees or race conditions
-# with local dev servers. The trailing `// <ISO>` comment is regenerated from the
-# same instant so the human-readable form never drifts from the millisecond value.
-# The regex below and js/commands.js's LAST_DEPLOY declaration must agree;
-# test/lastDeployStamp.test.js binds them so a refactor that breaks the stamp
-# fails the gate rather than aborting this deploy after merge.
-echo "==> Updating deploy timestamp in staged js/commands.js"
+# Stamp the deploy time into the staged js/commands.js AND index.html from one
+# instant, so the live site's `uptime` counts from this deploy and its "Last
+# login" banner shows the same moment. Both would otherwise drift: `uptime` is
+# re-stamped every deploy while a hardcoded banner is frozen at whatever was last
+# committed. Stamping the staged copies leaves the git working directory untouched,
+# avoiding dirty working trees or race conditions with local dev servers. The
+# trailing `// <ISO>` comment is regenerated from the same instant so the
+# human-readable form never drifts from the millisecond value. The regexes below
+# and the markup/declarations they rewrite must agree; test/lastDeployStamp.test.js
+# and test/lastLoginStamp.test.js bind them so a refactor that breaks a stamp fails
+# the gate rather than aborting this deploy after merge.
+echo "==> Updating deploy timestamp in staged js/commands.js and index.html"
 node -e '
 	const fs = require("fs");
 	const file = process.argv[1];
+	const htmlFile = process.argv[2];
 	const before = fs.readFileSync(file, "utf8");
 	const now = Date.now();
 	const iso = new Date(now).toISOString().replace(/\.\d{3}Z$/, "Z");
@@ -52,7 +56,23 @@ node -e '
 		process.exit(1);
 	}
 	fs.writeFileSync(file, after);
-' "$stage/js/commands.js"
+
+	// Stamp the index.html "Last login" banner from the SAME instant so it never
+	// drifts from the uptime LAST_DEPLOY drives. Formatted like the macOS banner
+	// and the terminal date command (Date-style, zero-padded), in UTC like iso.
+	const d = new Date(now);
+	const day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()];
+	const mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()];
+	const pad = (n) => String(n).padStart(2, "0");
+	const login = day + " " + mon + " " + pad(d.getUTCDate()) + " " + pad(d.getUTCHours()) + ":" + pad(d.getUTCMinutes()) + ":" + pad(d.getUTCSeconds());
+	const beforeHtml = fs.readFileSync(htmlFile, "utf8");
+	const afterHtml = beforeHtml.replace(/Last login: [^<]* on console/, "Last login: " + login + " on console");
+	if (afterHtml === beforeHtml) {
+		console.error("deploy: could not find a Last login banner to stamp in " + htmlFile);
+		process.exit(1);
+	}
+	fs.writeFileSync(htmlFile, afterHtml);
+' "$stage/js/commands.js" "$stage/index.html"
 
 rsync_args=()
 for arg in "$@"; do
