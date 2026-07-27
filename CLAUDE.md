@@ -239,9 +239,10 @@ allowlist, or the redirect loops.
 ## Deployment
 
 Pushing to `main` auto-deploys via `.github/workflows/deploy.yml`, which runs
-`deploy.sh`. The script copies the deploy set (`index.html`, `.htaccess`,
+`deploy.sh`. The script extracts the deploy set (`index.html`, `.htaccess`,
 `robots.txt`, `sitemap.xml`, `humans.txt`, `manifest.webmanifest`, `css/`, `js/`,
-`assets/`) into a temporary staging directory, stamps the current
+`assets/`) from `HEAD` with `git archive` into a temporary staging directory — so
+a hand-run deploy ships the commit, never uncommitted working-tree edits — stamps the current
 Unix-millisecond time into `LAST_DEPLOY` in the **staged** `js/commands.js` (so
 the terminal's `uptime` counts from the live deploy) and the same instant into the
 staged `index.html`'s "Last login" banner (so it can't drift from that `uptime`),
