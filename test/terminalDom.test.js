@@ -76,6 +76,22 @@ test("clear empties the scrollback and hides the boot output", async () => {
   assert.equal(boot.style.display, "none", "the boot output is hidden");
 });
 
+test("clear and help ignore operands, like their shell namesakes", async () => {
+  const { window, document } = await loadModule("js/terminal.js");
+  const input = document.querySelector(".cmd-input");
+  const log = document.querySelector(LOG);
+
+  submit(window, input, "help --all");
+  assert.match(
+    log.textContent,
+    /available commands:/,
+    "help with an operand still lists the commands",
+  );
+
+  submit(window, input, "clear foo");
+  assert.equal(log.textContent, "", "clear with an operand still clears");
+});
+
 test("./whoami.sh reprints the whoami card with its heading demoted", async () => {
   const { window, document } = await loadModule("js/terminal.js");
   const input = document.querySelector(".cmd-input");

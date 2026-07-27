@@ -235,11 +235,16 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
 
     // Normalize internal consecutive whitespace to a single space for matching.
     const cmd = rawCmd.replace(/\s+/g, " ");
+    // The DOM commands dispatch on the command NAME, so operands are ignored the
+    // way `clear` and `help` ignore theirs in a shell. Matching the whole line
+    // instead made `clear foo` or `help --all` fall through to reply() and print
+    // "command not found" for a command help itself advertises.
+    const name = cmd.split(" ")[0];
 
     // clear empties the screen: wipe the scrollback and hide the boot output,
     // leaving just the prompt, like a real terminal. It returns before the shared
     // echo/scroll tail below, since it produces no scrollback line of its own.
-    if (cmd === DOM_COMMANDS.clear) {
+    if (name === DOM_COMMANDS.clear) {
       log.textContent = "";
       boot.style.display = "none";
       clearInput();
@@ -256,7 +261,7 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
       const blockSelector = blockFor(cmd);
       if (blockSelector) {
         echoBlock(blockSelector);
-      } else if (cmd === DOM_COMMANDS.help) {
+      } else if (name === DOM_COMMANDS.help) {
         helpBlock();
       } else {
         replyLine(reply(rawCmd));
