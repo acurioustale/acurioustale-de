@@ -171,6 +171,17 @@ test("rawTextElements does not treat </script-oops> as a close", () => {
   assert.equal(el.body, "a</script-oops>b");
 });
 
+test("rawTextElements skips an element inside an HTML comment", () => {
+  // A commented-out `<script>` never executes, so it must not be enumerated: the
+  // CSP guard would otherwise demand a hash for dead markup, and its count check
+  // (which steps over comments whole) would report a bogus divergence.
+  const html = `<!-- <script>stale()</script> -->` + `<script>live()</script>`;
+  const els = [...rawTextElements(html, "script")];
+  assert.equal(els.length, 1);
+  assert.equal(els[0].body, "live()");
+  assert.equal(countRawTextOpeners(html, "script"), 1);
+});
+
 // --- countRawTextOpeners ----------------------------------------------------
 
 test("countRawTextOpeners counts each opener once, skipping bodies", () => {

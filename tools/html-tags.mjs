@@ -105,11 +105,14 @@ export function* findTags(html, name, query = {}) {
 // Like htmlTags but for a raw-text element that carries a body (script): also
 // yields `body`, the text between the open and close tags. The close tag anchors
 // its name to a boundary char, so `</script-oops>` (or `</scriptx>`) is not read
-// as the close — a browser keeps the element open there. Comments are NOT skipped
-// here, matching the script enumeration the CSP guard depends on.
+// as the close — a browser keeps the element open there. An element whose start
+// tag sits inside an HTML comment is skipped, as in htmlTags and in the opener
+// scan below: a commented-out `<script>` never executes, so the CSP guard must
+// neither demand a hash for it nor read it as a count divergence.
 export function* rawTextElements(html, name) {
   const re = new RegExp(`${openTag(name)}([\\s\\S]*?)${closeTag(name)}`, "gi");
   for (const m of html.matchAll(re)) {
+    if (isCommented(html, m.index)) continue;
     yield { raw: m[0], attrs: parseAttrs(m[1]), body: m[2] };
   }
 }
