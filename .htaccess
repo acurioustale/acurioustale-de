@@ -31,6 +31,16 @@
   # attacker origin). This file ships only to the acurioustale.de docroot, and
   # every canonical URL on the site uses that host, so pinning it also folds any
   # alias onto the canonical name.
+  #
+  # No [NE] here, deliberately. Substituting the already-percent-encoded
+  # %{REQUEST_URI} looks like it should need it, but mod_rewrite decodes the
+  # substitution and re-escapes it on the way out, which round-trips: probed
+  # against Apache 2.4.67, /a%20b redirects to /a%20b and /a%2520b to /a%2520b.
+  # Adding [NE] suppresses only the escape half, so the decoded path lands raw in
+  # the Location header — /a%20b would 301 to a header containing a literal space
+  # (and /caf%C3%A9/ to raw UTF-8), both invalid. Nothing in the gate exercises
+  # these rewrite rules, so re-probe with a local Apache (see CLAUDE.md) before
+  # changing this line.
   RewriteRule ^(.*)$ https://acurioustale.de%{REQUEST_URI} [L,R=301]
 </IfModule>
 
