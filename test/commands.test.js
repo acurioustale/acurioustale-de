@@ -5,6 +5,7 @@ import {
   reply,
   help,
   blockFor,
+  FS_ENTRIES,
   formatUptime,
   MS_PER_MIN,
   MIN_PER_HOUR,
@@ -50,9 +51,29 @@ test("a bare ls lists projects/ and whoami.sh", () => {
   assert.equal(reply("ls"), "projects/ whoami.sh");
 });
 
-test("ls of any other path errors like real ls", () => {
+test("ls of any other path errors like real ls, one operand per line", () => {
   assert.equal(reply("ls foo"), "ls: foo: No such file or directory");
-  assert.equal(reply("ls a b"), "ls: a b: No such file or directory");
+  assert.equal(
+    reply("ls a b"),
+    "ls: a: No such file or directory\nls: b: No such file or directory",
+  );
+});
+
+test("every entry a bare ls lists resolves, never denied as missing", () => {
+  // The listing and the lookup must agree: listing whoami.sh and then answering
+  // "No such file or directory" for `ls whoami.sh` made the fake filesystem
+  // contradict itself. blockFor is consulted first, as terminal.js dispatches.
+  for (const entry of FS_ENTRIES) {
+    const name = entry.replace(/\/+$/, "");
+    const cmd = `ls ${name}`;
+    const answer = blockFor(cmd) ?? reply(cmd);
+    assert.doesNotMatch(
+      answer,
+      /No such file or directory/,
+      `\`${cmd}\` denies an entry that \`ls\` lists`,
+    );
+  }
+  assert.equal(reply("ls whoami.sh"), "whoami.sh");
 });
 
 test("uptime returns calculated uptime string", () => {

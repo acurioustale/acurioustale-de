@@ -21,6 +21,11 @@ export const ADVERTISED_COMMANDS = {
   help: "show this help",
 };
 
+// The fake filesystem, exactly as a bare `ls` prints it: a trailing slash marks
+// the directory. Kept as data next to the tables above so the listing and the
+// per-operand lookup in HANDLERS.ls read the same set.
+export const FS_ENTRIES = ["projects/", "whoami.sh"];
+
 export const STATIC_BLOCKS = {
   "./whoami.sh": ".whoami",
   "ls projects": ".projects",
@@ -105,10 +110,23 @@ export const HANDLERS = {
       "",
       "guest is not in the sudoers file.  This incident will be reported.",
     ].join("\n"),
+  // A bare `ls` prints FS_ENTRIES; an operand naming one of them prints that
+  // name, one operand per line as real ls does. Both read the same table, so the
+  // fake filesystem can no longer contradict itself — `ls` used to list
+  // whoami.sh and then answer "No such file or directory" for `ls whoami.sh`.
+  // The directory's own contents are the .projects block terminal.js reprints
+  // for `ls projects` (via blockFor) before reply() is ever reached.
   ls: (argv) =>
     argv.length < 2
-      ? "projects/ whoami.sh"
-      : "ls: " + argv.slice(1).join(" ") + ": No such file or directory",
+      ? FS_ENTRIES.join(" ")
+      : argv
+          .slice(1)
+          .map((operand) =>
+            FS_ENTRIES.includes(operand) || FS_ENTRIES.includes(operand + "/")
+              ? operand
+              : "ls: " + operand + ": No such file or directory",
+          )
+          .join("\n"),
   uptime: () => formatUptime(Date.now() - LAST_DEPLOY),
   date: () => new Date().toString(),
   echo: (argv) => argv.slice(1).join(" "),
