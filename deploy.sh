@@ -21,15 +21,21 @@ TARGET="html/acurioustale.de/"
 # --delete remove anything no longer shipped. TARGET is unchanged, so the
 # server-side rsync jail still matches.
 DEPLOY_ASSETS=(index.html .htaccess robots.txt sitemap.xml humans.txt manifest.webmanifest css js assets)
-# Stage only TRACKED files. A plain `cp -R css js assets` copies whatever those
-# directories currently hold, including untracked working-tree files (a scratch
-# .css/.mjs, a local export), which `rsync --delete` would then mirror straight
-# to the live web root on a hand-run deploy. Enumerating via `git ls-files`
-# ships exactly what is committed; --error-unmatch keeps a typo'd or renamed
-# entry a loud failure (as `cp -R` of a missing path was) rather than silently
-# shipping nothing for it. --from0 pairs with the -z NUL delimiter.
-git ls-files -z --error-unmatch -- "${DEPLOY_ASSETS[@]}" |
-	rsync --from0 --files-from=- -a ./ "$stage"/
+# Stage the deploy set from the COMMIT, not the working tree. Enumerating tracked
+# paths with `git ls-files` and copying them keeps untracked cruft (a scratch
+# .css/.mjs, a local export) out of the web root, but rsync still reads each path
+# from disk — so a hand-run deploy from a dirty checkout published uncommitted
+# edits. `git archive` reads the blobs out of HEAD instead, so what ships is
+# exactly what is committed, matching what CI deploys from a clean checkout. A
+# pathspec matching nothing in HEAD (a typo'd or renamed entry) aborts the
+# archive, keeping that a loud failure rather than silently shipping nothing.
+git archive --format=tar HEAD -- "${DEPLOY_ASSETS[@]}" | tar -x -C "$stage"
+
+# Publishing HEAD means local edits are ignored; say so, or a hand-run deploy
+# from a dirty tree looks like it shipped what is on screen.
+if ! git diff --quiet HEAD -- "${DEPLOY_ASSETS[@]}"; then
+	echo "==> Note: uncommitted changes to the deploy set are NOT deployed (shipping HEAD)" >&2
+fi
 
 # Stamp the deploy time into the staged js/commands.js AND index.html from one
 # instant, so the live site's `uptime` counts from this deploy and its "Last

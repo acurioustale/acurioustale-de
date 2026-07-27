@@ -141,10 +141,11 @@ rather than the token.
 Link checking runs separately (see Development) so flaky external hosts never
 block a deploy.
 
-`deploy.sh` copies the deploy set — `index.html`, `.htaccess`, `robots.txt`,
+`deploy.sh` extracts the deploy set — `index.html`, `.htaccess`, `robots.txt`,
 `sitemap.xml`, `humans.txt`, `manifest.webmanifest`, `css/`, `js/` and
-`assets/` — into a temporary
-staging directory, stamps the current Unix-millisecond time into `LAST_DEPLOY` in
+`assets/` — from `HEAD` with `git archive` into a temporary
+staging directory, so a hand-run deploy ships the commit rather than whatever the
+working tree happens to hold. It then stamps the current Unix-millisecond time into `LAST_DEPLOY` in
 the staged `js/commands.js` (so the terminal's `uptime` counts from the live
 deploy), then mirrors the staging directory to the web root on the host with
 `rsync -avz --delete`:
