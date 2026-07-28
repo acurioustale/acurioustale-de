@@ -63,18 +63,31 @@ linting, the unit tests and the CSP/og-image guards). Install the tools once,
 then run the script:
 
 ```bash
-brew install vnu shellcheck shfmt actionlint   # one-time
-npm install                                    # one-time (ESLint, stylelint, markdownlint-cli2, Prettier, svgo, jsdom, fast-check, Playwright)
+brew install shellcheck shfmt actionlint openjdk   # one-time
+npm install                                        # one-time (ESLint, stylelint, markdownlint-cli2, Prettier, vnu, svgo, jsdom, fast-check, Playwright)
 ./validate.sh
 ```
 
 `validate.sh` skips any of the brew-installed CLIs that aren't present (with a
 notice — CI always enforces them), so it stays runnable on a fresh checkout;
-Node and npm are the only hard requirements. When a pinned brew CLI (shfmt,
-actionlint) _is_ present, it asserts the version matches the one in `.tool-versions`,
-so a drifted local tool is caught before it surfaces as a mystery CI reformat.
-Node is also pinned in `.tool-versions`; a version mismatch there emits a warning
-(not a hard error) since it can still pass locally while behaving differently in CI.
+Node and npm are the only hard requirements. When a pinned brew CLI (ShellCheck,
+shfmt, actionlint) _is_ present, it asserts the version matches the one in
+`.tool-versions`, so a drifted local tool is caught before it surfaces as a mystery
+CI reformat. Node is also pinned in `.tool-versions`; a version mismatch there emits
+a warning (not a hard error) since it can still pass locally while behaving
+differently in CI.
+
+Every tool is pinned exactly once, and where it's pinned follows from who delivers
+it. Tools npm can install — Prettier, vnu (the `vnu-jar` package), ESLint,
+stylelint, markdownlint-cli2, svgo — are pinned by `package-lock.json` and run out
+of `node_modules`, so `npm ci` alone makes CI and local byte-identical. Tools npm
+can't deliver — Node, ShellCheck, shfmt, actionlint — are pinned in
+`.tool-versions`, which both `validate.sh` and the workflow read, and CI fetches
+each as a static binary at that exact version rather than using whatever the runner
+image ships. Nothing appears in both lists, so the two authorities can't disagree.
+vnu needs a JVM that npm can't provide: `validate.sh` uses `java` from `PATH` or
+`JAVA_HOME` (Homebrew's `openjdk` is keg-only, so it usually isn't on `PATH`), and
+skips the check with a notice when neither is there.
 
 The tests come in layers. `npm test` (`node --test`) runs the pure-logic unit
 tests plus jsdom DOM-wiring tests that drive the modules against a document built
