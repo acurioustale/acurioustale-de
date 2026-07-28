@@ -70,15 +70,23 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      # Nu Html Checker (current release) over the markup, the stylesheet and the
-      # SVG favicon, mirroring `validate.sh`. We download the jar rather than use
-      # a packaged wrapper: wrappers ship an older bundled vnu that rejects valid
-      # modern features (theme-color `media`, the `color-scheme` CSS property).
-      # Selecting files by extension keeps vnu away from the binary PNGs.
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: ".tool-versions"
+          cache: npm
+
+      - name: Install npm tooling
+        run: npm ci
+
+      # Nu Html Checker over the markup, the stylesheet and the SVG favicon,
+      # mirroring `validate.sh`. The jar comes from the `vnu-jar` devDependency,
+      # so package-lock.json pins the exact bytes: upstream publishes only a
+      # rolling `latest` release with no versioned jar URL, so downloading from
+      # GitHub would silently change vnu under us between runs. Selecting files
+      # by extension keeps vnu away from the binary PNGs.
       - name: Validate HTML, CSS and SVG
         run: |
-          curl -sSfL -o "$RUNNER_TEMP/vnu.jar" \
-            https://github.com/validator/validator/releases/download/latest/vnu.jar
           # Filter benign infos: the void-element trailing slash (Prettier
           # house style), the CSP meta check (a file:// false positive where
           # script-src 'self' can't match the same-origin js/ modules; served
@@ -87,7 +95,7 @@ jobs:
           # the @supports guard in style.css makes it safe to use).
           find . \( -path ./.git -o -path ./node_modules \) -prune -o \
             \( -name '*.html' -o -name '*.css' -o -name '*.svg' \) \
-            -exec java -jar "$RUNNER_TEMP/vnu.jar" \
+            -exec java -jar node_modules/vnu-jar/build/dist/vnu.jar \
               --filterpattern '.*(Trailing slash on void elements|Content Security Policy|field-sizing).*' \
               --also-check-css --also-check-svg {} +
 
@@ -99,15 +107,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libxml2-utils
           xmllint --noout sitemap.xml
-
-      - name: Set up Node
-        uses: actions/setup-node@v6
-        with:
-          node-version-file: ".tool-versions"
-          cache: npm
-
-      - name: Install npm tooling
-        run: npm ci
 
       # Read the pins with an exact first-field match (mirroring validate.sh's
       # tool_version helper) and `exit` after the first hit, so a malformed or

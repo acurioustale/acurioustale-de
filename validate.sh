@@ -12,7 +12,14 @@
 # Node + npm are required (the repo's own tooling, tests and guards run on them).
 # The other CLIs are optional: each is skipped with a notice when absent so this
 # stays runnable everywhere, while CI pins and always enforces them. Install them
-# with: brew install vnu shellcheck shfmt actionlint, plus `npm install`.
+# with: brew install shellcheck shfmt actionlint openjdk, plus `npm install`.
+#
+# Two pinning authorities, one rule: tools delivered by npm (Prettier, vnu, ESLint,
+# stylelint, markdownlint, svgo) are pinned by package-lock.json and reached through
+# node_modules, so `npm ci` alone makes CI and local identical. System tools that
+# npm can't deliver (Node, ShellCheck, shfmt, actionlint) are pinned in
+# .tool-versions and asserted below. Nothing is pinned in both places, so the two
+# can't disagree.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -41,6 +48,27 @@ ACTIONLINT_VERSION="$(tool_version actionlint)"
 have() { command -v "$1" >/dev/null 2>&1; }
 skip() { echo "note: $1 not installed - skipping $2 (CI enforces it)." >&2; }
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
+
+# vnu ships as an npm devDependency (package `vnu-jar`), so package-lock.json
+# pins the exact jar — no `brew install vnu` to drift and no rolling `latest`
+# download in CI. It still needs a JVM, which npm can't provide: prefer one on
+# PATH, else JAVA_HOME (Homebrew's openjdk is keg-only, so it usually isn't on
+# PATH). The package's postinstall would fetch its own Temurin, but npm's
+# allow-scripts gate denies it by default and the download sits outside the
+# lockfile's integrity checks, so system Java stays the supported route.
+#
+# Probe each candidate by running it rather than trusting `command -v`: macOS
+# ships a /usr/bin/java stub that is always on PATH and exits 1 with "Unable to
+# locate a Java Runtime" when no JDK is installed, so a presence check would
+# select it and fail the vnu step instead of falling through to JAVA_HOME.
+VNU_JAR="node_modules/vnu-jar/build/dist/vnu.jar"
+java_bin=""
+for candidate in java "${JAVA_HOME:-}/bin/java"; do
+	if "$candidate" -version >/dev/null 2>&1; then
+		java_bin="$candidate"
+		break
+	fi
+done
 
 # Assert a tool reports the pinned version. Compare the pin against each
 # whitespace-separated token of the --version output (with a leading "v"
@@ -74,7 +102,7 @@ if [[ "$do_clean" -eq 1 ]]; then
 	npm ci
 fi
 
-if have vnu; then
+if [[ -n "$java_bin" && -f "$VNU_JAR" ]]; then
 	step "Validating HTML, CSS and SVG (vnu)"
 	# Select files by extension, exactly like the CI job — prune .git and
 	# node_modules, and never hand vnu the assets/ dir (it parses PNGs as text).
@@ -95,11 +123,14 @@ if have vnu; then
 	if [[ ${#files[@]} -eq 0 ]]; then
 		echo "  no HTML/CSS/SVG files found to validate" >&2
 	else
-		vnu --filterpattern '.*(Trailing slash on void elements|Content Security Policy|field-sizing).*' \
+		"$java_bin" -jar "$VNU_JAR" \
+			--filterpattern '.*(Trailing slash on void elements|Content Security Policy|field-sizing).*' \
 			--also-check-css --also-check-svg "${files[@]}"
 	fi
+elif [[ ! -f "$VNU_JAR" ]]; then
+	skip "vnu-jar (run npm install)" "HTML/CSS/SVG validation"
 else
-	skip vnu "HTML/CSS/SVG validation"
+	skip "a Java runtime (brew install openjdk, or set JAVA_HOME)" "HTML/CSS/SVG validation"
 fi
 
 if have xmllint; then

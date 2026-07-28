@@ -39,10 +39,10 @@ asset-reference guards (`tools/check-csp.mjs`, `tools/check-og-image.mjs`,
 `tools/check-asset-refs.mjs` — the last asserts every local asset the markup and
 manifest reference exists as a tracked file). Deploys gate on all passing.
 
-Run the same checks locally with `./validate.sh` (needs `brew install vnu
-shellcheck shfmt actionlint` plus `npm install` for npm-only tools: Prettier,
-ESLint, stylelint, markdownlint-cli2, svgo; xmllint ships with macOS/Xcode or via
-`brew install libxml2`). `validate.sh` skips any uninstalled brew CLI (with a
+Run the same checks locally with `./validate.sh` (needs `brew install shellcheck
+shfmt actionlint openjdk` plus `npm install` for npm-delivered tools: Prettier,
+vnu, ESLint, stylelint, markdownlint-cli2, svgo; xmllint ships with macOS/Xcode or
+via `brew install libxml2`). `validate.sh` skips any uninstalled brew CLI (with a
 notice — CI still enforces it), so it runs on a fresh checkout; Node and npm are
 the only hard requirements.
 
@@ -53,19 +53,36 @@ specs (a browser download) on PRs and pushes to `main`. Deploys gate only on
 
 Dev deps needing `package.json`: ESLint (plus `@eslint/js`, `@eslint/json`,
 `eslint-plugin-html`, `globals`), stylelint (plus `stylelint-config-standard`),
-markdownlint-cli2, Prettier, svgo, jsdom (DOM harness for wiring tests),
-`fast-check` (property tests), `@playwright/test` (browser smoke tests). CI guards
+markdownlint-cli2, Prettier, `vnu-jar` (the Nu Html Checker jar), svgo, jsdom (DOM
+harness for wiring tests), `fast-check` (property tests), `@playwright/test`
+(browser smoke tests). CI guards
 use only Node's stdlib; pure-logic unit tests also use `fast-check`
 (`test/properties.test.js`); only the DOM-wiring tests
 (`test/terminalDom.test.js`, `test/themeToggleDom.test.js`, via
 `test/helpers/dom.js`) need jsdom; only `e2e/` specs need Playwright; the site
 still ships no dependencies.
 
-Prettier uses its defaults. Keep the Prettier, shfmt, actionlint and Node
-versions pinned in `.tool-versions` in sync — `validate.sh` asserts the shfmt and
-actionlint versions when present (hard error on mismatch; Node is a warning),
-Prettier's version is enforced via the npm lockfile. `.claude/launch.json`
-defines a "site" launch config on port 4174.
+Prettier uses its defaults. Every tool is pinned exactly once, and where follows
+from who delivers it. **npm-delivered** (Prettier, vnu via `vnu-jar`, ESLint,
+stylelint, markdownlint-cli2, svgo): pinned by `package-lock.json`, run out of
+`node_modules`, so `npm ci` makes CI and local byte-identical — never add these to
+`.tool-versions`. **System tools** (Node, ShellCheck, shfmt, actionlint): pinned in
+`.tool-versions`, read by both `validate.sh` (via its `tool_version` helper) and
+deploy.yml's "Read tool versions" step; CI downloads ShellCheck, shfmt and
+actionlint as static binaries at that exact version rather than trusting the runner
+image, and `validate.sh` asserts each local binary reports the pin (hard error;
+Node stays a warning, since a mismatched engine can pass locally yet behave
+differently in CI). Adding a tool to the gate means picking one of those two
+authorities, not both. `.claude/launch.json` defines a "site" launch config on
+port 4174.
+
+vnu has no version-pinnable download: upstream publishes only a rolling `latest`
+GitHub release (versioned jar tags stopped at 20.6.30), which is why it comes from
+npm instead. The jar ships inside the `vnu-jar` tarball, so the lockfile's integrity
+hash covers it. That package's `postinstall` would additionally fetch its own
+Temurin JDK; npm's allow-scripts gate denies it by default and it should stay denied
+— the download is outside lockfile integrity, and both CI (`setup-java`) and local
+(`brew install openjdk`) supply a JVM already.
 
 Two transitive dev deps of `markdownlint-cli2` carried advisories, pinned to
 patched versions via `overrides` in `package.json`: `markdown-it` (`^14.2.0`) and
