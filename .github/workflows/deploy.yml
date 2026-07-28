@@ -119,24 +119,33 @@ jobs:
         id: versions
         run: |
           {
+            echo "shellcheck=$(awk '$1 == "shellcheck" { print $2; exit }' .tool-versions)"
             echo "shfmt=$(awk '$1 == "shfmt" { print $2; exit }' .tool-versions)"
             echo "actionlint=$(awk '$1 == "actionlint" { print $2; exit }' .tool-versions)"
           } >> "$GITHUB_OUTPUT"
 
-      # Pinned to the version run locally so CI and developers agree on style.
+      # Prettier comes from package-lock.json, so `npm ci` above already pinned it
+      # to the version developers run.
       - name: Check formatting (Prettier)
         run: npm run format:check
 
-      # shellcheck is preinstalled on ubuntu-latest; shfmt we fetch as a pinned
-      # static binary so CI matches what developers run locally. Discover every
-      # tracked shell script with git ls-files (mirroring validate.sh) so the
-      # ops/ rsync-jail script is linted alongside deploy.sh and validate.sh.
+      # ShellCheck and shfmt are both fetched as pinned static binaries so CI
+      # matches what developers run locally — the runner's preinstalled
+      # shellcheck floats with the image and would drift from .tool-versions.
+      # Discover every tracked shell script with git ls-files (mirroring
+      # validate.sh) so the ops/ rsync-jail script is linted alongside deploy.sh
+      # and validate.sh.
       - name: Lint and format-check shell scripts
         env:
+          SHELLCHECK_VERSION: ${{ steps.versions.outputs.shellcheck }}
           SHFMT_VERSION: ${{ steps.versions.outputs.shfmt }}
         run: |
           mapfile -t sh_files < <(git ls-files '*.sh')
-          shellcheck "${sh_files[@]}"
+          curl -sSfL -o "$RUNNER_TEMP/shellcheck.tar.xz" \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          tar -xJf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP" \
+            --strip-components=1 "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+          "$RUNNER_TEMP/shellcheck" "${sh_files[@]}"
           curl -sSfL -o "$RUNNER_TEMP/shfmt" \
             "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64"
           chmod +x "$RUNNER_TEMP/shfmt"

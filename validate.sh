@@ -34,6 +34,7 @@ esac
 # "nodejs") rather than repeating the awk per tool.
 tool_version() { awk -v tool="$1" '$1 == tool {print $2}' .tool-versions; }
 ci_node_version="$(tool_version nodejs)"
+SHELLCHECK_VERSION="$(tool_version shellcheck)"
 SHFMT_VERSION="$(tool_version shfmt)"
 ACTIONLINT_VERSION="$(tool_version actionlint)"
 
@@ -113,6 +114,10 @@ fi
 
 if have shellcheck && have shfmt; then
 	step "Shell scripts (shellcheck + shfmt)"
+	# ShellCheck prints "version: 0.11.0" on its own line, so pass just that line
+	# (require_version matches whole whitespace-separated tokens). Do not start
+	# this comment with the tool's name — that spelling parses as a directive.
+	require_version shellcheck "$SHELLCHECK_VERSION" "$(shellcheck --version | grep '^version:')"
 	require_version shfmt "$SHFMT_VERSION" "$(shfmt --version)"
 	# Discover every tracked shell script (git ls-files), not just the top-level
 	# *.sh, so the ops/ rsync-jail script is linted too — a shell bug there is
