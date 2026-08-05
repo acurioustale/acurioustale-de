@@ -92,11 +92,9 @@ drops the default export `markdownlint-cli2` imports (would break it). Both are
 dev-only tooling linting our own files — no untrusted input.
 
 `npm audit` is not expected to be clean at all times. Advisories in transitive dev
-deps are left to Dependabot unless a fix is in range; as of 2026-08-05
-`brace-expansion` (via eslint → minimatch) and `fast-uri` (via stylelint → table →
-ajv) are open with no in-range patch — `fast-uri` would need a major override on
-ajv's `^3.0.6`. Add an `overrides` pin only when the advisory is reachable or
-Dependabot cannot resolve it.
+deps are left to Dependabot; add an `overrides` pin only when Dependabot cannot
+resolve it or the advisory is reachable from our own runs (as with the
+`markdown-it` and `js-yaml` pins above).
 
 ## Theme system (the one piece of real logic)
 
