@@ -89,8 +89,14 @@ patched versions via `overrides` in `package.json`: `markdown-it` (`^14.2.0`) an
 `js-yaml` (`^4.3.0`). The js-yaml pin deliberately stays on 4.x: the fix for its
 quadratic-complexity DoS in merge-key handling was backported to 4.2.0, while 5.x
 drops the default export `markdownlint-cli2` imports (would break it). Both are
-dev-only tooling linting our own files — no untrusted input — and `npm audit` is
-clean.
+dev-only tooling linting our own files — no untrusted input.
+
+`npm audit` is not expected to be clean at all times. Advisories in transitive dev
+deps are left to Dependabot unless a fix is in range; as of 2026-08-05
+`brace-expansion` (via eslint → minimatch) and `fast-uri` (via stylelint → table →
+ajv) are open with no in-range patch — `fast-uri` would need a major override on
+ajv's `^3.0.6`. Add an `overrides` pin only when the advisory is reachable or
+Dependabot cannot resolve it.
 
 ## Theme system (the one piece of real logic)
 
