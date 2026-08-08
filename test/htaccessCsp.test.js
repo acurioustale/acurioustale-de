@@ -137,3 +137,16 @@ test("readHeaderCsp does not flag the plain unconditional set form", () => {
   assert.equal(headerCsp, "default-src 'none'");
   assert.deepEqual(unsupportedHeaders, []);
 });
+
+test("readHeaderCsp ignores a Content-Security-Policy-Report-Only header", () => {
+  // A separate, additive header: it enforces nothing, so it neither weakens the
+  // policy this guard validates nor makes it unreadable.
+  const { headerCsp, unsupportedHeaders } = readHeaderCsp(
+    [
+      `Header always set Content-Security-Policy "default-src 'none'"`,
+      `Header always set Content-Security-Policy-Report-Only "default-src 'self'; report-uri /csp"`,
+    ].join("\n"),
+  );
+  assert.equal(headerCsp, "default-src 'none'");
+  assert.deepEqual(unsupportedHeaders, []);
+});

@@ -25,7 +25,12 @@ const SCOPING_SECTION =
 // makes the `set` apply only sometimes — so validating the lone value would
 // green-light a policy the server may actually serve weakened or not at all. The
 // guard flags such a line so the caller fails closed rather than trusting it.
-const CSP_HEADER_LINE = /^Header\b.*\bContent-Security-Policy\b/i;
+//
+// The name match must not extend into a longer header: `\b` also ends before the
+// hyphen of `Content-Security-Policy-Report-Only`, so an added report-only header
+// — a separate, additive header that weakens nothing — would be flagged as an
+// unreadable CSP form and fail the gate.
+const CSP_HEADER_LINE = /^Header\b.*\bContent-Security-Policy(?!-)\b/i;
 const SUPPORTED_CSP_SET =
   /^Header\s+(?:always\s+)?set\s+Content-Security-Policy\s+"[^"]*"\s*$/i;
 
