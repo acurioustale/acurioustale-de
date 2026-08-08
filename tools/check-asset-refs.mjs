@@ -28,13 +28,15 @@ const manifestText = await readFile(
 // local file this repo ships: an absolute/scheme URL (https:, mailto:, tel:) or
 // a protocol-relative one points off-repo; a fragment is in-page; a bare root or
 // a directory path resolves to a listing, not a file. A leading "/" (absolute
-// from the web root) is normalised to a repo-relative path.
+// from the web root) or "./" (explicitly relative, same file either way) is
+// normalised to a repo-relative path — without stripping "./", an existing,
+// tracked file would be reported as missing.
 function localPath(ref) {
   if (!ref) return undefined;
   if (/^[a-z][a-z0-9+.-]*:/i.test(ref) || ref.startsWith("//"))
     return undefined;
   if (ref.startsWith("#")) return undefined;
-  const path = ref.split(/[?#]/)[0].replace(/^\//, "");
+  const path = ref.split(/[?#]/)[0].replace(/^(?:\.?\/)+/, "");
   if (path === "" || path.endsWith("/")) return undefined;
   return path;
 }
