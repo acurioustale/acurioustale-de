@@ -84,6 +84,41 @@ test("clicking keeps the two theme-color metas in sync", async () => {
   assert.equal(dark.getAttribute("media"), "(prefers-color-scheme: dark)");
 });
 
+test("a stored override survives an inline guard that never ran", async () => {
+  // The pre-paint guard is inline and can be blocked while same-origin modules
+  // still load, so data-theme is absent even though a choice is stored. The
+  // toggle must recover it from localStorage rather than paint as auto.
+  const { document } = await loadModule("js/theme-toggle.js", {
+    storedTheme: "dark",
+  });
+  assert.equal(document.documentElement.getAttribute("data-theme"), "dark");
+  assert.equal(
+    document
+      .querySelector('meta[name="theme-color"][data-scheme="dark"]')
+      .getAttribute("media"),
+    "all",
+  );
+  assert.match(
+    document.querySelector(".theme-toggle").getAttribute("aria-label"),
+    /^Theme: dark/,
+  );
+});
+
+test("a pre-painted override is reflected without re-persisting it", async () => {
+  const { document, window } = await loadModule("js/theme-toggle.js", {
+    storedTheme: "light",
+    preApplied: true,
+  });
+  assert.equal(document.documentElement.getAttribute("data-theme"), "light");
+  assert.equal(window.localStorage.getItem("theme"), "light");
+  assert.equal(
+    document
+      .querySelector('meta[name="theme-color"][data-scheme="light"]')
+      .getAttribute("media"),
+    "all",
+  );
+});
+
 test("a bfcache restore re-syncs the theme from localStorage", async () => {
   const { document, window } = await loadModule("js/theme-toggle.js");
   const root = document.documentElement;
