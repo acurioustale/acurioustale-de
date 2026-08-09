@@ -28,6 +28,10 @@ let importCounter = 0;
 //                     Safari ≤13, whose MQL only has the deprecated addListener
 //   noMatchMedia      omit window.matchMedia entirely, to model a browser that
 //                     lacks it (the modules must degrade, not throw)
+//   storedTheme       seed the "theme" key in localStorage before the module
+//                     loads, to model a page arriving with a saved override
+//   preApplied        also mirror storedTheme onto data-theme, as the inline
+//                     pre-paint guard does when it is allowed to run
 export async function loadModule(
   relPath,
   {
@@ -35,6 +39,8 @@ export async function loadModule(
     prefersLight = false,
     legacyMatchMedia = false,
     noMatchMedia = false,
+    storedTheme = null,
+    preApplied = false,
   } = {},
 ) {
   const dom = new JSDOM(html, {
@@ -42,6 +48,14 @@ export async function loadModule(
     pretendToBeVisual: true, // provides requestAnimationFrame
   });
   const { window } = dom;
+
+  // A page can arrive with a saved override: it is always in localStorage, but
+  // only on data-theme if the inline pre-paint guard was allowed to run.
+  if (storedTheme !== null) {
+    window.localStorage.setItem("theme", storedTheme);
+    if (preApplied)
+      window.document.documentElement.setAttribute("data-theme", storedTheme);
+  }
 
   // jsdom ships no matchMedia; the modules query pointer type and colour scheme.
   // noMatchMedia leaves it undefined to model a browser without the API.

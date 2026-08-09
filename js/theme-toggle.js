@@ -58,6 +58,19 @@ if (bar && window.matchMedia) {
     }
   }
 
+  // The stored override, or "auto" when none is set. localStorage is the source
+  // of truth: the inline pre-paint guard normally mirrors it onto data-theme,
+  // but it can be blocked (an extension refusing inline scripts while still
+  // allowing same-origin modules), and reading the attribute would then lose the
+  // saved choice. Fall back to the attribute only when the store is unreadable.
+  function storedMode() {
+    try {
+      return normalizeMode(localStorage.getItem("theme"));
+    } catch {
+      return mode();
+    }
+  }
+
   // Persist the choice: "auto" clears the override, light/dark store it.
   function persist(to) {
     try {
@@ -103,12 +116,10 @@ if (bar && window.matchMedia) {
 
   bar.appendChild(btn);
 
-  // A stored override is already in localStorage (the inline guard applied it
-  // pre-paint); sync the metas to match without re-persisting the same value.
-  const initialMode = mode();
-  if (initialMode !== "auto") {
-    setScheme(initialMode);
-  }
+  // Apply whatever is stored — normally a no-op on data-theme, since the inline
+  // guard already applied it pre-paint, but it also syncs the metas and recovers
+  // the choice if that guard never ran. Reflect only; no write back.
+  setScheme(storedMode());
   render();
 
   // When another tab changes the theme, mirror it here via setScheme so the
@@ -137,11 +148,7 @@ if (bar && window.matchMedia) {
   // handled above, so skip it.
   window.addEventListener("pageshow", function (e) {
     if (!e.persisted) return;
-    let stored = null;
-    try {
-      stored = localStorage.getItem("theme");
-    } catch {}
-    setScheme(normalizeMode(stored));
+    setScheme(storedMode());
     render();
   });
 }
