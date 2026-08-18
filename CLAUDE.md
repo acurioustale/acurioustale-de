@@ -86,10 +86,11 @@ Temurin JDK; npm's allow-scripts gate denies it by default and it should stay de
 
 Two transitive dev deps of `markdownlint-cli2` carried advisories, pinned to
 patched versions via `overrides` in `package.json`: `markdown-it` (`^14.2.0`) and
-`js-yaml` (`^4.3.0`). The js-yaml pin deliberately stays on 4.x: the fix for its
-quadratic-complexity DoS in merge-key handling was backported to 4.2.0, while 5.x
-drops the default export `markdownlint-cli2` imports (would break it). Both are
-dev-only tooling linting our own files — no untrusted input.
+`js-yaml` (`^4.3.1`). The js-yaml pin deliberately stays on 4.x: its
+quadratic-complexity DoS fixes are backported to the 4.x line (merge keys in
+4.2.0, `!!omap` resolution in 4.3.1), while 5.x drops the default export
+`markdownlint-cli2` imports (would break it). Both are dev-only tooling linting
+our own files — no untrusted input.
 
 `npm audit` is not expected to be clean at all times. Advisories in transitive dev
 deps are left to Dependabot; add an `overrides` pin only when Dependabot cannot
