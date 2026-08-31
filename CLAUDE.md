@@ -5,8 +5,10 @@ Guidance for Claude Code (claude.ai/code) working in this repo.
 ## What this is
 
 Personal landing page for [acurioustale.de](https://acurioustale.de): a single
-static `index.html` styled as a terminal "whoami" card, one stylesheet, two small
-ES modules in `js/`. No framework, no build step. The deployed site ships no
+static `index.html` styled as a terminal "whoami" card, one stylesheet, five ES
+modules in `js/` — two the page loads (`terminal.js`, `theme-toggle.js`) plus the
+three pure-logic modules they import (`theme.js`, `commands.js`,
+`terminal-ui.js`). No framework, no build step. The deployed site ships no
 dependencies (npm packages are dev-time linters plus the jsdom, fast-check and
 Playwright test harnesses). `js/` modules are plain ES modules served as-is,
 loaded with `type="module"` — no bundling.
@@ -14,14 +16,18 @@ loaded with `type="module"` — no bundling.
 ## Commands
 
 ```bash
-python3 -m http.server 8000   # serve locally, then visit http://localhost:8000
+python3 -m http.server 4174   # serve locally on the project port (.claude/launch.json, playwright.config.js)
 npm run lint                  # lint JS, JSON, CSS and Markdown (ESLint, stylelint, markdownlint-cli2)
 npm run format                # Prettier write across the repo (format:check verifies; used by CI)
 npm test                      # run unit tests (node --test)
 npm run coverage              # unit tests + coverage thresholds (the gate CI enforces)
 npm run test:e2e              # run browser smoke tests (Playwright, chromium; separate from CI gate)
 npm run links                 # check links locally (lychee, separate from CI gate)
-./validate.sh                 # run the FULL gate locally: shell, format, lint, tests, xml, csp, og-image, svg
+npm run check:csp             # CSP guard: inline-script hashes, and meta/.htaccess agreement
+npm run check:og              # og-image guard: the file matches the og: metas it advertises
+npm run check:asset-refs      # every referenced local asset exists as a tracked file
+npm run check:deploy-assets   # DEPLOY_ASSETS covers the tracked deploy set
+./validate.sh                 # run the FULL gate locally: format, lint, tests+coverage, the four guards, shell, workflows, xml, svg
 ./validate.sh --clean         # run with a clean install (npm ci) first, matching CI exactly
 ./deploy.sh                   # deploy to production by hand (uses your own SSH access)
 ./deploy.sh --dry-run         # preview what the deploy would change
@@ -34,10 +40,11 @@ shell script incl. `ops/` (ShellCheck, shfmt, discovered via `git ls-files
 '*.sh'`), workflows (actionlint), JS/JSON/inline-HTML scripts (ESLint with
 `@eslint/json` and `eslint-plugin-html`), CSS (stylelint), Markdown
 (markdownlint-cli2); runs unit tests under a coverage gate (`node --test
---experimental-test-coverage`, via `npm run coverage`) and the CSP, og-image and
-asset-reference guards (`tools/check-csp.mjs`, `tools/check-og-image.mjs`,
-`tools/check-asset-refs.mjs` — the last asserts every local asset the markup and
-manifest reference exists as a tracked file). Deploys gate on all passing.
+--experimental-test-coverage`, via `npm run coverage`) and the four Node guards
+(`tools/check-csp.mjs`, `tools/check-og-image.mjs`, `tools/check-asset-refs.mjs` —
+every local asset the markup and manifest reference exists as a tracked file — and
+`tools/check-deploy-assets.mjs`, which classifies every tracked file as shipped or
+deliberately not). Deploys gate on all passing.
 
 Run the same checks locally with `./validate.sh` (needs `brew install shellcheck
 shfmt actionlint openjdk` plus `npm install` for npm-delivered tools: Prettier,
@@ -246,6 +253,24 @@ CSP can't express — while the meta is the baseline the python dev server appli
 - `.htaccess` is in the deploy set and ships to the web root; the rsync jail's
   path prefix already covers it — no server-side change needed.
 
+That split is the rule, not a one-off. Every parsing rule a guard needs lives in
+a `tools/` helper with a test of its own: `html-tags.mjs`
+(`test/htmlTags.test.js`), `html-comments.mjs` (`test/htmlComments.test.js`,
+the commented-out-tag skip), `inline-scripts.mjs`
+(`test/inlineScripts.test.js`), `csp-directives.mjs`
+(`test/cspDirectives.test.js`, first-wins parsing plus the two-policy
+comparison), `htaccess-csp.mjs` (`test/htaccessCsp.test.js`, Apache line
+continuations, comments, request scopes, last-wins, and matching only the
+enforced `Content-Security-Policy` — never `-Report-Only`) and `css-tokens.mjs`
+(`test/cssTokens.test.js`, the `light-dark()` palette the theme-colour,
+manifest and fallback tests bind to). `test/lastDeployStamp.test.js` and
+`test/lastLoginStamp.test.js` do the same for `deploy.sh`'s two stamping
+regexes. When a guard needs to read something new, add it as a helper with a
+test — never a private regex inside the guard. The repo's most common gate
+failure by far is a guard regex that was subtly wrong on real input (see
+PRs #248, #254, #259, #270 and #271), and it is the helper's test that catches
+it.
+
 Neither the python dev server nor the gate exercises the `.htaccess` **rewrite**
 rules (the HTTPS-redirect / X-Forwarded-Proto trust logic), and curl against the
 live HTTPS site can't reach the plain-HTTP `:80` path they guard. To test rewrite
@@ -292,9 +317,21 @@ see `ops/README.md`).
 ## Conventions
 
 Commits follow Conventional Commits (`type(scope): imperative`, lowercase,
-≤72-char header, no attribution trailers, hyphens not dashes). Scopes seen in
-history: `deploy`, `js`, `terminal`, `security`, `commands`, `tools`, `validate`,
-`links`, `deps`, `site`. Versioning is SemVer.
+≤72-char header, no attribution trailers, hyphens not dashes). Types used here go
+beyond the global set: `ci` (workflow changes), `build` (dependency and pinning
+changes, the type Dependabot opens PRs with), `style` and `perf` also appear.
+Scopes seen in history: `tools`, `security`, `deploy`, `terminal`, `js`, `theme`,
+`commands`, `validate`, `deps`, `deps-dev`, `site`, `ops`, `links`, `e2e`, `ci`.
+Versioning is SemVer.
+
+A change lands with the test that binds it. Nearly every `fix` in history adds or
+tightens a test that fails without the fix — a guard fix comes with a helper test,
+a DOM-wiring fix with a jsdom test, a paint-dependent one with a Playwright spec.
+Prefer binding two surfaces to each other over restating a value in both.
+
+Keep this file free of facts that churn faster than it is edited. Naming a
+specific open advisory, version or transient state here goes stale within days and
+then misleads (#269); state the policy and point at the standing example instead.
 
 Formatting and linting are tool-enforced (Prettier, shfmt, stylelint,
 markdownlint, svgo, actionlint) — run `./validate.sh` before pushing to catch
