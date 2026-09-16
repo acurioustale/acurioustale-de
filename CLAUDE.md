@@ -60,10 +60,11 @@ from `brew install libxml2`. `validate.sh` skips any still-uninstalled CLI (with
 a notice — CI still enforces it), so it runs on a fresh checkout; Node and npm
 are the only hard requirements.
 
-Link checking and browser smoke tests are separate and non-gating: the `links`
-workflow runs lychee on PRs and weekly; the `e2e` workflow runs the Playwright
-specs (a browser download) on PRs and pushes to `main`. Deploys gate only on
-`validate`.
+Link checking, browser smoke tests and dependency advisories are separate and
+non-gating: the `links` workflow runs lychee on PRs and weekly; the `e2e`
+workflow runs the Playwright specs (a browser download) on PRs and pushes to
+`main`; the `audit` workflow runs `npm audit` on PRs that change the dependency
+tree and weekly. Deploys gate only on `validate`.
 
 Dev deps needing `package.json`: ESLint (plus `@eslint/js`, `@eslint/json`,
 `eslint-plugin-html`, `globals`), stylelint (plus `stylelint-config-standard`),
@@ -118,10 +119,13 @@ itself, the pin stops raising the floor and starts holding the tree below what
 the linter expects, which is a different thing than what it was added for. All
 of them are dev-only tooling linting our own files — no untrusted input.
 
-`npm audit` is not expected to be clean at all times. Advisories in transitive dev
-deps are left to Dependabot; add an `overrides` pin only when Dependabot cannot
-resolve it or the advisory is reachable from our own runs (as with the pins
-above). Check the advisory's own patched version before trusting `npm audit
+`npm audit` is not expected to be clean at all times, which is why it is in the
+non-gating `audit` workflow and in neither `validate.sh` nor the gate. That
+workflow splits the two trees on their actual stakes: the runtime tree is empty
+(the site ships no dependencies) so any advisory there fails the job, while the
+dev tree is reported and never fatal. Advisories in transitive dev deps are left
+to Dependabot; add an `overrides` pin only when Dependabot cannot resolve it or
+the advisory is reachable from our own runs (as with the pins above). Check the advisory's own patched version before trusting `npm audit
 fix --force`: it resolves by dependency range, so it can land on a version that
 is still inside the advisory's vulnerable range.
 

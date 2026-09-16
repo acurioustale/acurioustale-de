@@ -44,7 +44,7 @@ into `js/theme.js`, `js/commands.js` and `js/terminal-ui.js` and unit-tested in
 ├── eslint.config.mjs    ← ESLint flat config (JS and JSON linting)
 ├── svgo.config.mjs      ← svgo configuration for SVG optimisation
 ├── playwright.config.js ← Playwright config for the e2e smoke tests
-├── .github/workflows/   ← deploy (gating) + links (lychee) + e2e (Playwright) CI
+├── .github/workflows/   ← deploy (gating) + links, e2e, audit (non-gating) CI
 ├── validate.sh          ← run all gating CI checks locally
 └── deploy.sh            ← rsync deploy to the web host (via staging directory)
 ```
@@ -126,6 +126,20 @@ they never gate a deploy) — on pull requests and a weekly schedule via the
 ```bash
 brew install lychee
 lychee --config lychee.toml index.html README.md CLAUDE.md SECURITY.md
+```
+
+Dependency advisories are checked separately too (an advisory is published on
+someone else's schedule and must never block an unrelated deploy) — on pull
+requests that change the dependency tree and weekly, via the
+[`audit` workflow](.github/workflows/audit.yml). It splits the two trees on
+their stakes: an advisory against a runtime dependency fails the job, because a
+runtime dependency is served to every visitor; one against the dev tooling is
+reported and never fatal. The deployed site ships no dependencies, so the strict
+half is the assertion that this is still true. Check by hand with:
+
+```bash
+npm audit --omit=dev   # the strict half
+npm audit              # everything, dev tooling included
 ```
 
 ### Regenerating the share image
