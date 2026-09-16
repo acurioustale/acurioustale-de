@@ -30,3 +30,6 @@ node_modules/
 # Local env / secrets
 .env
 .env.*
+
+# Pinned CI tools cached locally by validate.sh (see .tool-versions)
+.tools/
