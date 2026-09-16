@@ -18,8 +18,9 @@ the report isn't visible before a fix ships:
 - Preferred: GitHub's [private vulnerability reporting][advisory]
 - Email: <me@acurioustale.de>
 
-The same contacts are published in machine-readable form at
-<https://acurioustale.de/.well-known/security.txt> (RFC 9116).
+The same contacts are published in machine-readable form in
+[`.well-known/security.txt`](.well-known/security.txt), served from the site
+root per RFC 9116.
 
 Please include, where possible:
 

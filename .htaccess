@@ -128,6 +128,12 @@
 # static site with no PHP, so config.php and *.example never exist here — they're
 # denied anyway to match the shared-host sibling (comparebuilds.app) and guard
 # against a stray copy or template ever landing in the web root.
+#
+# FilesMatch tests the basename, so this does NOT block .well-known/security.txt
+# (basename "security.txt"). It does answer 403 rather than 404 for a path under
+# a dot-directory that doesn't exist yet, because Apache then falls back to the
+# dot-prefixed component itself — so a 403 there means "not deployed", not
+# "denied". Verified against a local httpd with this file.
 <FilesMatch "(^\.|\.example$|^config\.php$)">
   Require all denied
 </FilesMatch>

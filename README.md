@@ -126,7 +126,7 @@ they never gate a deploy) — on pull requests and a weekly schedule via the
 
 ```bash
 brew install lychee
-lychee --config lychee.toml index.html README.md CLAUDE.md SECURITY.md .well-known/security.txt
+lychee --config lychee.toml index.html README.md CLAUDE.md SECURITY.md
 ```
 
 Dependency advisories are checked separately too (an advisory is published on

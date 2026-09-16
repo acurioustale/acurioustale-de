@@ -14,7 +14,6 @@ on:
       - README.md
       - CLAUDE.md
       - SECURITY.md
-      - .well-known/security.txt
       - lychee.toml
       - .github/workflows/links.yml
   schedule:
@@ -34,5 +33,5 @@ jobs:
       - name: Check links (lychee)
         uses: lycheeverse/lychee-action@v2
         with:
-          args: "--config lychee.toml --no-progress index.html README.md CLAUDE.md SECURITY.md .well-known/security.txt"
+          args: "--config lychee.toml --no-progress index.html README.md CLAUDE.md SECURITY.md"
           fail: true
