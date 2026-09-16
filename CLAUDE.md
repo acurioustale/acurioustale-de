@@ -83,6 +83,16 @@ differently in CI). Adding a tool to the gate means picking one of those two
 authorities, not both. `.claude/launch.json` defines a "site" launch config on
 port 4174.
 
+Only one of those two authorities updates itself. `.github/dependabot.yml` opens
+weekly version-update PRs for the npm tree and the workflow actions (security
+updates run from the repo's security settings, with or without that file), so
+`package-lock.json` moves on its own. `.tool-versions` does not: nothing watches
+those upstreams, and a system tool drifts only when a local install wanders off
+the pin — which `validate.sh` then reports as a hard error while CI, fetching the
+pinned binary, stays green. Bumping a system pin is a hand-edit, and the version
+it names is the one CI downloads, so check the release publishes the asset
+deploy.yml fetches.
+
 vnu has no version-pinnable download: upstream publishes only a rolling `latest`
 GitHub release (versioned jar tags stopped at 20.6.30), which is why it comes from
 npm instead. The jar ships inside the `vnu-jar` tarball, so the lockfile's integrity
