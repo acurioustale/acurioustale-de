@@ -40,7 +40,6 @@
   },
   "overrides": {
     "markdown-it": "^14.2.0",
-    "js-yaml": "^4.3.2",
     "smol-toml": "^1.7.1"
   }
 }
