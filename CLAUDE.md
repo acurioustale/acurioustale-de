@@ -46,10 +46,14 @@ every local asset the markup and manifest reference exists as a tracked file —
 `tools/check-deploy-assets.mjs`, which classifies every tracked file as shipped or
 deliberately not). Deploys gate on all passing.
 
-Run the same checks locally with `./validate.sh` (needs `brew install shellcheck
-shfmt actionlint openjdk` plus `npm install` for npm-delivered tools: Prettier,
-vnu, ESLint, stylelint, markdownlint-cli2, svgo; xmllint ships with macOS/Xcode or
-via `brew install libxml2`). `validate.sh` skips any uninstalled brew CLI (with a
+Run the same checks locally with `./validate.sh`. `.tool-versions` is in
+asdf/mise format, so `mise install` installs Node, ShellCheck, shfmt and
+actionlint at the pinned versions and applies them in this directory; installing
+them by hand works too, but then nothing applies the pins and `validate.sh` can
+only assert them. On top of that it needs `npm install` for the npm-delivered
+tools (Prettier, vnu, ESLint, stylelint, markdownlint-cli2, svgo), a JVM for vnu
+(`brew install openjdk`), and xmllint, which ships with macOS/Xcode or comes
+from `brew install libxml2`. `validate.sh` skips any uninstalled CLI (with a
 notice — CI still enforces it), so it runs on a fresh checkout; Node and npm are
 the only hard requirements.
 

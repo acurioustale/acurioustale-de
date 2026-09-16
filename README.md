@@ -63,18 +63,27 @@ linting, the unit tests and the CSP/og-image guards). Install the tools once,
 then run the script:
 
 ```bash
-brew install shellcheck shfmt actionlint openjdk   # one-time
+mise install                                       # one-time (Node, ShellCheck, shfmt, actionlint at the pinned versions)
+brew install openjdk                               # one-time (a JVM for vnu, which npm can't provide)
 npm install                                        # one-time (ESLint, stylelint, markdownlint-cli2, Prettier, vnu, svgo, jsdom, fast-check, Playwright)
 ./validate.sh
 ```
 
-`validate.sh` skips any of the brew-installed CLIs that aren't present (with a
-notice — CI always enforces them), so it stays runnable on a fresh checkout;
-Node and npm are the only hard requirements. When a pinned brew CLI (ShellCheck,
-shfmt, actionlint) _is_ present, it asserts the version matches the one in
-`.tool-versions`, so a drifted local tool is caught before it surfaces as a mystery
-CI reformat. Node is also pinned in `.tool-versions`; a version mismatch there emits
-a warning (not a hard error) since it can still pass locally while behaving
+`.tool-versions` is in asdf/mise format, so `mise install` reads it directly and
+no version is named twice. With mise activated in your shell, the pinned
+versions apply inside this directory and your system tools are untouched
+elsewhere, which means the pins hold on their own instead of being restored by
+hand after a package manager moves a formula.
+
+Installing the four by hand (`brew install shellcheck shfmt actionlint`) works
+too, but then nothing applies the pins — `validate.sh` can only check them.
+`validate.sh` skips any of those CLIs that aren't present (with a notice — CI
+always enforces them), so it stays runnable on a fresh checkout; Node and npm are
+the only hard requirements. When a pinned CLI (ShellCheck, shfmt, actionlint)
+_is_ present, it asserts an exact version match against `.tool-versions`, so a
+drifted local tool is caught before it surfaces as a mystery CI reformat. Node is
+pinned there too, but is compared by major only and warns rather than failing,
+since a different patch release can still pass locally while behaving
 differently in CI.
 
 Every tool is pinned exactly once, and where it's pinned follows from who delivers
