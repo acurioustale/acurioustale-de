@@ -17,13 +17,33 @@ updates:
       prefix-development: build(deps-dev)
     open-pull-requests-limit: 5
     groups:
-      # Every npm dependency here is dev tooling — the deployed site ships none
-      # — so there is no runtime tree to keep in separate PRs, unlike repos that
-      # bundle their dependencies. The gate (lint, tests, coverage, the four
-      # guards, svgo output) runs on each PR and catches a bad bump, so batching
-      # minor and patch into one weekly PR trades no safety for much less noise.
-      # Majors stay on their own: markdownlint-cli2 and stylelint have both
-      # carried breaking changes that need reading about, not just a green tick.
+      # Lockstep pairs, listed first so they win for these packages: Dependabot
+      # puts a dependency in the first group it matches. Each of these config
+      # packages declares a peerDependency on its linter's major (`@eslint/js`
+      # on `eslint ^10`, `stylelint-config-standard` on `stylelint ^17`), so a
+      # PR bumping one across a major without the other can never go green.
+      # Neither group carries an update-types filter, and that is the point:
+      # majors are exactly the case that has to move together.
+      #
+      # The patterns are exact names, not prefixes. `@eslint/json` and
+      # `eslint-plugin-html` declare no such constraint, so they stay in the
+      # batch below where the gate catches a bad bump.
+      eslint:
+        patterns:
+          - eslint
+          - "@eslint/js"
+      stylelint:
+        patterns:
+          - stylelint
+          - stylelint-config-standard
+      # Every remaining npm dependency here is dev tooling — the deployed site
+      # ships none — so there is no runtime tree to keep in separate PRs, unlike
+      # repos that bundle their dependencies. The gate (lint, tests, coverage,
+      # the four guards, svgo output) runs on each PR and catches a bad bump, so
+      # batching minor and patch into one weekly PR trades no safety for much
+      # less noise.
+      # Majors stay on their own: markdownlint-cli2 has carried breaking changes
+      # that need reading about, not just a green tick.
       dev-tooling:
         dependency-type: development
         update-types:
