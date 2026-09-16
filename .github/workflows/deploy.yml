@@ -71,7 +71,7 @@ jobs:
           java-version: "21"
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: ".tool-versions"
           cache: npm
@@ -226,7 +226,7 @@ jobs:
       # SSH, and Configure SSH needs neither, so the order is free to choose.
       # No npm cache: the script only uses node's stdlib, with no install step.
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: ".tool-versions"
 
