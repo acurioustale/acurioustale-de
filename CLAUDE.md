@@ -42,7 +42,8 @@ shell script incl. `ops/` (ShellCheck, shfmt, discovered via `git ls-files
 (markdownlint-cli2); runs unit tests under a coverage gate (`node --test
 --experimental-test-coverage`, via `npm run coverage`) and the four Node guards
 (`tools/check-csp.mjs`, `tools/check-og-image.mjs`, `tools/check-asset-refs.mjs` —
-every local asset the markup and manifest reference exists as a tracked file — and
+every local asset the markup, the linked stylesheets and the manifest reference
+exists as a tracked file — and
 `tools/check-deploy-assets.mjs`, which classifies every tracked file as shipped or
 deliberately not). Deploys gate on all passing.
 
@@ -278,9 +279,13 @@ the commented-out-tag skip), `inline-scripts.mjs`
 (`test/cspDirectives.test.js`, first-wins parsing plus the two-policy
 comparison), `htaccess-csp.mjs` (`test/htaccessCsp.test.js`, Apache line
 continuations, comments, request scopes, last-wins, and matching only the
-enforced `Content-Security-Policy` — never `-Report-Only`) and `css-tokens.mjs`
+enforced `Content-Security-Policy` — never `-Report-Only`), `css-tokens.mjs`
 (`test/cssTokens.test.js`, the `light-dark()` palette the theme-colour,
-manifest and fallback tests bind to). `test/lastDeployStamp.test.js` and
+manifest and fallback tests bind to) and `asset-refs.mjs`
+(`test/assetRefs.test.js`, what counts as a local reference — the URL-carrying
+attributes incl. `srcset` lists, the share-image metas whose same-origin
+absolute URL an attribute-only scan misses, `url()` targets resolved against
+their stylesheet's directory, and the manifest lists). `test/lastDeployStamp.test.js` and
 `test/lastLoginStamp.test.js` do the same for `deploy.sh`'s two stamping
 regexes. When a guard needs to read something new, add it as a helper with a
 test — never a private regex inside the guard. The repo's most common gate
