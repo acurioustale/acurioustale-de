@@ -96,7 +96,7 @@
   <FilesMatch "\.(png|svg)$">
     Header set Cache-Control "public, max-age=86400, stale-while-revalidate=2592000"
   </FilesMatch>
-  <FilesMatch "\.(html|css|js|webmanifest)$">
+  <FilesMatch "\.(html|css|js|webmanifest|txt)$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
 </IfModule>
@@ -108,6 +108,11 @@
   AddType image/svg+xml .svg
   # Serve the PWA manifest with its registered type on hosts that don't map it.
   AddType application/manifest+json .webmanifest
+  # RFC 9116 wants .well-known/security.txt served as text/plain with an explicit
+  # charset. AddDefaultCharset would stamp one on every text/* response; this
+  # scopes it to the three .txt files the site actually serves (security.txt,
+  # robots.txt, humans.txt), all of which are UTF-8.
+  AddCharset utf-8 .txt
 </IfModule>
 
 # ─── Compression ───────────────────────────────────────────────────────────────

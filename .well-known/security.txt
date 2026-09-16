@@ -1,0 +1,11 @@
+# Machine-readable security contact for acurioustale.de (RFC 9116).
+# The prose policy this points at is SECURITY.md in the repository; keep the
+# contact address here and the one there the same — test/securityTxt.test.js
+# binds them so they can't drift apart.
+
+Contact: mailto:me@acurioustale.de
+Contact: https://github.com/acurioustale/acurioustale-de/security/advisories/new
+Expires: 2027-09-01T00:00:00.000Z
+Preferred-Languages: en, de
+Canonical: https://acurioustale.de/.well-known/security.txt
+Policy: https://github.com/acurioustale/acurioustale-de/blob/main/SECURITY.md

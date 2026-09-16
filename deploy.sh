@@ -20,7 +20,7 @@ TARGET="html/acurioustale.de/"
 # on the host forever. Syncing a directory that holds only the deploy set lets
 # --delete remove anything no longer shipped. TARGET is unchanged, so the
 # server-side rsync jail still matches.
-DEPLOY_ASSETS=(index.html .htaccess robots.txt sitemap.xml humans.txt manifest.webmanifest css js assets)
+DEPLOY_ASSETS=(index.html .htaccess robots.txt sitemap.xml humans.txt manifest.webmanifest .well-known css js assets)
 # Stage the deploy set from the COMMIT, not the working tree. Enumerating tracked
 # paths with `git ls-files` and copying them keeps untracked cruft (a scratch
 # .css/.mjs, a local export) out of the web root, but rsync still reads each path
