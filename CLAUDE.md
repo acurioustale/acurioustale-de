@@ -91,18 +91,21 @@ Temurin JDK; npm's allow-scripts gate denies it by default and it should stay de
 — the download is outside lockfile integrity, and both CI (`setup-java`) and local
 (`brew install openjdk`) supply a JVM already.
 
-Two transitive dev deps of `markdownlint-cli2` carried advisories, pinned to
-patched versions via `overrides` in `package.json`: `markdown-it` (`^14.2.0`) and
-`js-yaml` (`^4.3.1`). The js-yaml pin deliberately stays on 4.x: its
-quadratic-complexity DoS fixes are backported to the 4.x line (merge keys in
-4.2.0, `!!omap` resolution in 4.3.1), while 5.x drops the default export
-`markdownlint-cli2` imports (would break it). Both are dev-only tooling linting
+Three transitive dev deps of `markdownlint-cli2` have carried advisories and are
+held at patched versions via `overrides` in `package.json`: `markdown-it`,
+`js-yaml` and `smol-toml`. Read the pinned ranges there, not here — they move
+whenever a new advisory lands. The js-yaml pin deliberately stays on the 4.x
+line: its DoS fixes are backported there, while 5.x drops the default export the
+pinned `markdownlint-cli2` imports (upgrading that linter is what retires this
+constraint, not bumping js-yaml alone). All three are dev-only tooling linting
 our own files — no untrusted input.
 
 `npm audit` is not expected to be clean at all times. Advisories in transitive dev
 deps are left to Dependabot; add an `overrides` pin only when Dependabot cannot
-resolve it or the advisory is reachable from our own runs (as with the
-`markdown-it` and `js-yaml` pins above).
+resolve it or the advisory is reachable from our own runs (as with the three pins
+above). Check the advisory's own patched version before trusting `npm audit
+fix --force`: it resolves by dependency range, so it can land on a version that
+is still inside the advisory's vulnerable range.
 
 ## Theme system (the one piece of real logic)
 
