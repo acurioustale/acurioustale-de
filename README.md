@@ -142,6 +142,14 @@ npm audit --omit=dev   # the strict half
 npm audit              # everything, dev tooling included
 ```
 
+The same workflow asks a second, related question: is every `overrides` pin in
+`package.json` still earning its place? An override is added to escape a
+transitive advisory, but it has no natural end — upstream repins or releases,
+the advisory stops applying, and the pin stays behind holding a package back.
+`npm run check:stale-overrides` resolves and audits the tree with each override
+removed in turn, so a clean result names a pin that can go. Report-only, and off
+the gate: it costs a resolution and a registry round-trip per override.
+
 ### Regenerating the share image
 
 `assets/og-image.png` (the Open Graph card) is rendered from `og-image.src.svg`.
