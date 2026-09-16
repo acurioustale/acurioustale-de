@@ -128,9 +128,57 @@ jobs:
       - name: Check formatting (Prettier)
         run: npm run format:check
 
-      # ShellCheck and shfmt are both fetched as pinned static binaries so CI
-      # matches what developers run locally — the runner's preinstalled
-      # shellcheck floats with the image and would drift from .tool-versions.
+      # The three pinned tools come from third-party release hosts, so a fault
+      # there reddens the gate on code that is perfectly fine. Cache them under
+      # the same .tools/ directory and file names validate.sh keeps locally, so
+      # a normal run never touches those hosts and only a pin change or a cache
+      # eviction re-downloads. The key hashes the whole .tool-versions, so
+      # bumping node re-fetches all three needlessly — that is the safe
+      # direction to err in, and the alternative is three keys to keep in step
+      # by hand.
+      - name: Restore the pinned tool cache
+        uses: actions/cache@v6
+        with:
+          path: .tools
+          key: pinned-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.tool-versions') }}
+
+      # Only whatever the cache did not supply. Each fetch is skipped when the
+      # file is already present, exactly as validate.sh's pinned_fetch does, so
+      # a cache hit makes this step a no-op rather than a re-download. The
+      # runner's preinstalled shellcheck is never used: it floats with the image
+      # and would drift from .tool-versions.
+      - name: Fetch any pinned tool the cache did not supply
+        env:
+          SHELLCHECK_VERSION: ${{ steps.versions.outputs.shellcheck }}
+          SHFMT_VERSION: ${{ steps.versions.outputs.shfmt }}
+          ACTIONLINT_VERSION: ${{ steps.versions.outputs.actionlint }}
+        run: |
+          mkdir -p .tools
+          # fetch <dest> <url> [tar-member]. --retry-all-errors covers the
+          # transport faults a plain --retry ignores, notably the mid-transfer
+          # "connection died" a bare retry count won't catch. Downloaded to a
+          # file rather than piped into tar: a retried transfer restarts from
+          # zero, but tar has already eaten the bytes from the failed attempt,
+          # so the pipe would corrupt what the retry repairs.
+          fetch() {
+            local dest="$1" url="$2" member="${3:-}"
+            [ -e "$dest" ] && return 0
+            curl -sSfL --retry 5 --retry-delay 2 --retry-all-errors "$url" -o "$RUNNER_TEMP/dl"
+            if [ -n "$member" ]; then
+              tar xf "$RUNNER_TEMP/dl" -C "$RUNNER_TEMP" "$member"
+              mv "$RUNNER_TEMP/$member" "$RUNNER_TEMP/dl"
+            fi
+            chmod +x "$RUNNER_TEMP/dl"
+            mv "$RUNNER_TEMP/dl" "$dest"
+          }
+          fetch ".tools/shellcheck-${SHELLCHECK_VERSION}" \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
+            "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+          fetch ".tools/shfmt-${SHFMT_VERSION}" \
+            "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64"
+          fetch ".tools/actionlint-${ACTIONLINT_VERSION}" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" actionlint
+
       # Discover every tracked shell script with git ls-files (mirroring
       # validate.sh) so the ops/ rsync-jail script is linted alongside deploy.sh
       # and validate.sh.
@@ -140,15 +188,8 @@ jobs:
           SHFMT_VERSION: ${{ steps.versions.outputs.shfmt }}
         run: |
           mapfile -t sh_files < <(git ls-files '*.sh')
-          curl -sSfL -o "$RUNNER_TEMP/shellcheck.tar.xz" \
-            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
-          tar -xJf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP" \
-            --strip-components=1 "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
-          "$RUNNER_TEMP/shellcheck" "${sh_files[@]}"
-          curl -sSfL -o "$RUNNER_TEMP/shfmt" \
-            "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64"
-          chmod +x "$RUNNER_TEMP/shfmt"
-          "$RUNNER_TEMP/shfmt" -d "${sh_files[@]}"
+          ".tools/shellcheck-${SHELLCHECK_VERSION}" "${sh_files[@]}"
+          ".tools/shfmt-${SHFMT_VERSION}" -d "${sh_files[@]}"
 
       # actionlint validates the workflow itself and runs ShellCheck over the
       # embedded run scripts. Pinned static binary, no repo dependencies.
@@ -156,10 +197,7 @@ jobs:
         env:
           ACTIONLINT_VERSION: ${{ steps.versions.outputs.actionlint }}
         run: |
-          curl -sSfL -o "$RUNNER_TEMP/actionlint.tar.gz" \
-            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
-          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
-          "$RUNNER_TEMP/actionlint" -color
+          ".tools/actionlint-${ACTIONLINT_VERSION}" -color
 
       # ESLint (the browser modules in js/ and the inline JS in index.html, plus
       # JSON via @eslint/json), stylelint (css/) and markdownlint-cli2, all pinned
