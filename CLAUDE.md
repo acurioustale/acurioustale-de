@@ -13,6 +13,14 @@ dependencies (npm packages are dev-time linters plus the jsdom, fast-check and
 Playwright test harnesses). `js/` modules are plain ES modules served as-is,
 loaded with `type="module"` — no bundling.
 
+Reporting contacts are stated twice on purpose: `SECURITY.md` is the prose
+policy, `.well-known/security.txt` the RFC 9116 machine-readable half that a
+scanner or a researcher's tooling finds on the deployed site.
+`test/securityTxt.test.js` binds the two — the address there must be the one
+`SECURITY.md` gives, the `Canonical` URL must sit on the origin `index.html`
+declares canonical, and the `Expires` date must still be in the future, since an
+expired file is invalid per the RFC. Renewing it is a one-line edit.
+
 ## Commands
 
 ```bash

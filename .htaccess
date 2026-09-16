@@ -96,7 +96,7 @@
   <FilesMatch "\.(png|svg)$">
     Header set Cache-Control "public, max-age=86400, stale-while-revalidate=2592000"
   </FilesMatch>
-  <FilesMatch "\.(html|css|js|webmanifest)$">
+  <FilesMatch "\.(html|css|js|webmanifest|txt)$">
     Header set Cache-Control "no-cache"
   </FilesMatch>
 </IfModule>
@@ -108,6 +108,11 @@
   AddType image/svg+xml .svg
   # Serve the PWA manifest with its registered type on hosts that don't map it.
   AddType application/manifest+json .webmanifest
+  # RFC 9116 wants .well-known/security.txt served as text/plain with an explicit
+  # charset. AddDefaultCharset would stamp one on every text/* response; this
+  # scopes it to the three .txt files the site actually serves (security.txt,
+  # robots.txt, humans.txt), all of which are UTF-8.
+  AddCharset utf-8 .txt
 </IfModule>
 
 # ─── Compression ───────────────────────────────────────────────────────────────
@@ -123,6 +128,12 @@
 # static site with no PHP, so config.php and *.example never exist here — they're
 # denied anyway to match the shared-host sibling (comparebuilds.app) and guard
 # against a stray copy or template ever landing in the web root.
+#
+# FilesMatch tests the basename, so this does NOT block .well-known/security.txt
+# (basename "security.txt"). It does answer 403 rather than 404 for a path under
+# a dot-directory that doesn't exist yet, because Apache then falls back to the
+# dot-prefixed component itself — so a 403 there means "not deployed", not
+# "denied". Verified against a local httpd with this file.
 <FilesMatch "(^\.|\.example$|^config\.php$)">
   Require all denied
 </FilesMatch>

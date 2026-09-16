@@ -34,12 +34,13 @@ into `js/theme.js`, `js/commands.js` and `js/terminal-ui.js` and unit-tested in
 ├── robots.txt           ← allow-all crawl rule + sitemap pointer
 ├── sitemap.xml          ← single-page sitemap
 ├── humans.txt           ← the people behind the site (linked via rel="author")
+├── .well-known/         ← security.txt: machine-readable security contact (RFC 9116, deployed)
 ├── manifest.webmanifest ← PWA web app manifest (name, icons, theme colour)
 ├── og-image.src.svg     ← editable source for assets/og-image.png (not deployed)
 ├── lychee.toml          ← link-checker config (used by the links workflow)
 ├── CLAUDE.md            ← guidance for AI coding assistants
 ├── GEMINI.md            ← symlink to CLAUDE.md (same guidance, for Gemini)
-├── SECURITY.md          ← security policy: how to report a vulnerability
+├── SECURITY.md          ← security policy: how to report a vulnerability (prose; .well-known/security.txt is its machine-readable half)
 ├── package.json         ← npm-only dev tools (ESLint, stylelint, markdownlint-cli2, Prettier, svgo, jsdom, fast-check, Playwright)
 ├── eslint.config.mjs    ← ESLint flat config (JS and JSON linting)
 ├── svgo.config.mjs      ← svgo configuration for SVG optimisation
