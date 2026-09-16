@@ -12,7 +12,7 @@
     "lint:css": "stylelint \"css/**/*.css\"",
     "lint:md": "markdownlint-cli2",
     "lint": "npm run lint:js && npm run lint:css && npm run lint:md",
-    "links": "lychee --config lychee.toml index.html README.md CLAUDE.md SECURITY.md",
+    "links": "lychee --config lychee.toml index.html README.md CLAUDE.md SECURITY.md .well-known/security.txt",
     "validate": "./validate.sh",
     "test": "node --test",
     "coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-coverage-exclude='js/terminal.js' --test-coverage-exclude='js/theme-toggle.js' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
