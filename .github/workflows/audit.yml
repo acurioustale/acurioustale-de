@@ -62,6 +62,15 @@ jobs:
         continue-on-error: true
         run: npm audit --include=dev
 
+      # An override is a fix with no natural end: upstream repins or releases,
+      # the advisory stops applying, and the pin stays behind holding a package
+      # back. Report-only, and slow enough (a resolution and a registry query
+      # per override) that it belongs here rather than anywhere on the gate.
+      - name: Overrides still earning their place
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: npm run check:stale-overrides
+
       # A one-line verdict in the run summary, so the result is legible from the
       # Actions list without opening the log.
       - name: Summarise

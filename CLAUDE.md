@@ -27,6 +27,7 @@ npm run check:csp             # CSP guard: inline-script hashes, and meta/.htacc
 npm run check:og              # og-image guard: the file matches the og: metas it advertises
 npm run check:asset-refs      # every referenced local asset exists as a tracked file
 npm run check:deploy-assets   # DEPLOY_ASSETS covers the tracked deploy set
+npm run check:stale-overrides # which `overrides` pins still raise the floor (report-only, hits the registry)
 ./validate.sh                 # run the FULL gate locally: format, lint, tests+coverage, the four guards, shell, workflows, xml, svg
 ./validate.sh --clean         # run with a clean install (npm ci) first, matching CI exactly
 ./deploy.sh                   # deploy to production by hand (uses your own SSH access)
@@ -116,7 +117,11 @@ Read which packages and ranges are pinned there, not here — both move as
 advisories land and as the linter's own dependencies catch up. Keep an override
 only while it is still doing that work: once the linter ships a patched version
 itself, the pin stops raising the floor and starts holding the tree below what
-the linter expects, which is a different thing than what it was added for. All
+the linter expects, which is a different thing than what it was added for.
+`npm run check:stale-overrides` is what answers that per pin — it resolves and
+audits the tree with each override removed in turn, so a clean result means
+upstream has caught up and the entry can go. It runs report-only in the `audit`
+workflow, never on the gate. All
 of them are dev-only tooling linting our own files — no untrusted input.
 
 `npm audit` is not expected to be clean at all times, which is why it is in the
@@ -288,7 +293,9 @@ comparison), `htaccess-csp.mjs` (`test/htaccessCsp.test.js`, Apache line
 continuations, comments, request scopes, last-wins, and matching only the
 enforced `Content-Security-Policy` — never `-Report-Only`), `css-tokens.mjs`
 (`test/cssTokens.test.js`, the `light-dark()` palette the theme-colour,
-manifest and fallback tests bind to) and `asset-refs.mjs`
+manifest and fallback tests bind to) `overrides.mjs`
+(`test/overrides.test.js`, what a manifest looks like with one `overrides` entry
+removed and how npm's audit verdict reads) and `asset-refs.mjs`
 (`test/assetRefs.test.js`, what counts as a local reference — the URL-carrying
 attributes incl. `srcset` lists, the share-image metas whose same-origin
 absolute URL an attribute-only scan misses, `url()` targets resolved against
