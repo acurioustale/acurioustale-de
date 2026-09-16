@@ -1,0 +1,45 @@
+version: 2
+
+updates:
+  # Security updates run from the repo's security settings and need no entry
+  # here; this file adds the routine version updates on top, so a dependency is
+  # bumped because it moved, not only once it turns into an advisory.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # `build` is this repo's type for dependency and pinning changes, so the
+    # generated header is already a valid Conventional Commit: PRs squash-merge,
+    # which makes the PR title the landed commit header.
+    commit-message:
+      prefix: build(deps)
+      prefix-development: build(deps-dev)
+    open-pull-requests-limit: 5
+    groups:
+      # Every npm dependency here is dev tooling — the deployed site ships none
+      # — so there is no runtime tree to keep in separate PRs, unlike repos that
+      # bundle their dependencies. The gate (lint, tests, coverage, the four
+      # guards, svgo output) runs on each PR and catches a bad bump, so batching
+      # minor and patch into one weekly PR trades no safety for much less noise.
+      # Majors stay on their own: markdownlint-cli2 and stylelint have both
+      # carried breaking changes that need reading about, not just a green tick.
+      dev-tooling:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci(deps)
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        update-types:
+          - minor
+          - patch
