@@ -40,7 +40,6 @@
     "vnu-jar": "^26.9.7"
   },
   "overrides": {
-    "markdown-it": "^14.2.0",
     "smol-toml": "^1.7.1"
   }
 }
