@@ -63,27 +63,26 @@ linting, the unit tests and the CSP/og-image guards). Install the tools once,
 then run the script:
 
 ```bash
-mise install                                       # one-time (Node, ShellCheck, shfmt, actionlint at the pinned versions)
+mise install                                       # one-time (Node at the pinned version)
 brew install openjdk                               # one-time (a JVM for vnu, which npm can't provide)
 npm install                                        # one-time (ESLint, stylelint, markdownlint-cli2, Prettier, vnu, svgo, jsdom, fast-check, Playwright)
 ./validate.sh
 ```
 
-`.tool-versions` is in asdf/mise format, so `mise install` reads it directly and
-no version is named twice. With mise activated in your shell, the pinned
-versions apply inside this directory and your system tools are untouched
-elsewhere, which means the pins hold on their own instead of being restored by
-hand after a package manager moves a formula.
+ShellCheck, shfmt and actionlint need no install step: `validate.sh` downloads
+each at its pinned version into a gitignored `.tools/` on first run and reuses it
+after, the same way the workflow does. That keeps the pins with the project
+rather than with the machine — a `brew upgrade` can no longer drift a tool out
+from under its pin, and the ordinary local run checks exactly what CI checks
+instead of printing a skip notice. When a download is unavailable the script
+falls back to the copy on `PATH`, still asserting an exact version match against
+`.tool-versions`, so an offline machine degrades instead of blocking.
 
-Installing the four by hand (`brew install shellcheck shfmt actionlint`) works
-too, but then nothing applies the pins — `validate.sh` can only check them.
-`validate.sh` skips any of those CLIs that aren't present (with a notice — CI
-always enforces them), so it stays runnable on a fresh checkout; Node and npm are
-the only hard requirements. When a pinned CLI (ShellCheck, shfmt, actionlint)
-_is_ present, it asserts an exact version match against `.tool-versions`, so a
-drifted local tool is caught before it surfaces as a mystery CI reformat. Node is
-pinned there too, but is compared by major only and warns rather than failing,
-since a different patch release can still pass locally while behaving
+`.tool-versions` is in asdf/mise format, so `mise install` reads it directly and
+no version is named twice. It still installs all four, which is harmless — the
+three fetched tools are simply not taken from there. Node is the one that has to
+come from somewhere else, and it is compared by major only and warns rather than
+failing, since a different patch release can still pass locally while behaving
 differently in CI.
 
 Every tool is pinned exactly once, and where it's pinned follows from who delivers
@@ -91,9 +90,10 @@ it. Tools npm can install — Prettier, vnu (the `vnu-jar` package), ESLint,
 stylelint, markdownlint-cli2, svgo — are pinned by `package-lock.json` and run out
 of `node_modules`, so `npm ci` alone makes CI and local byte-identical. Tools npm
 can't deliver — Node, ShellCheck, shfmt, actionlint — are pinned in
-`.tool-versions`, which both `validate.sh` and the workflow read, and CI fetches
-each as a static binary at that exact version rather than using whatever the runner
-image ships. Nothing appears in both lists, so the two authorities can't disagree.
+`.tool-versions`, which both `validate.sh` and the workflow read, and both fetch
+each as a static binary at that exact version rather than using whatever the
+machine or the runner image ships (CI caches them, keyed on `.tool-versions`, so
+a release-host blip can't redden the gate). Nothing appears in both lists, so the two authorities can't disagree.
 vnu needs a JVM that npm can't provide: `validate.sh` uses `java` from `PATH` or
 `JAVA_HOME` (Homebrew's `openjdk` is keg-only, so it usually isn't on `PATH`), and
 skips the check with a notice when neither is there.
