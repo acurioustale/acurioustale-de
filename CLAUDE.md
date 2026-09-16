@@ -47,16 +47,18 @@ exists as a tracked file — and
 `tools/check-deploy-assets.mjs`, which classifies every tracked file as shipped or
 deliberately not). Deploys gate on all passing.
 
-Run the same checks locally with `./validate.sh`. `.tool-versions` is in
-asdf/mise format, so `mise install` installs Node, ShellCheck, shfmt and
-actionlint at the pinned versions and applies them in this directory; installing
-them by hand works too, but then nothing applies the pins and `validate.sh` can
-only assert them. On top of that it needs `npm install` for the npm-delivered
-tools (Prettier, vnu, ESLint, stylelint, markdownlint-cli2, svgo), a JVM for vnu
+Run the same checks locally with `./validate.sh`. It downloads ShellCheck, shfmt
+and actionlint at their pinned versions into a gitignored `.tools/` on first run
+(falling back to the `PATH` copy, still version-asserted, when a download is
+unavailable), so those three need no install step and no package manager can
+drift them out from under their pins. `.tool-versions` is in asdf/mise format, so
+`mise install` covers Node, the one system tool still installed rather than
+fetched. On top of that it needs `npm install` for the npm-delivered tools
+(Prettier, vnu, ESLint, stylelint, markdownlint-cli2, svgo), a JVM for vnu
 (`brew install openjdk`), and xmllint, which ships with macOS/Xcode or comes
-from `brew install libxml2`. `validate.sh` skips any uninstalled CLI (with a
-notice — CI still enforces it), so it runs on a fresh checkout; Node and npm are
-the only hard requirements.
+from `brew install libxml2`. `validate.sh` skips any still-uninstalled CLI (with
+a notice — CI still enforces it), so it runs on a fresh checkout; Node and npm
+are the only hard requirements.
 
 Link checking and browser smoke tests are separate and non-gating: the `links`
 workflow runs lychee on PRs and weekly; the `e2e` workflow runs the Playwright
@@ -80,11 +82,12 @@ stylelint, markdownlint-cli2, svgo): pinned by `package-lock.json`, run out of
 `node_modules`, so `npm ci` makes CI and local byte-identical — never add these to
 `.tool-versions`. **System tools** (Node, ShellCheck, shfmt, actionlint): pinned in
 `.tool-versions`, read by both `validate.sh` (via its `tool_version` helper) and
-deploy.yml's "Read tool versions" step; CI downloads ShellCheck, shfmt and
-actionlint as static binaries at that exact version rather than trusting the runner
-image, and `validate.sh` asserts each local binary reports the pin (hard error;
-Node stays a warning, since a mismatched engine can pass locally yet behave
-differently in CI). Adding a tool to the gate means picking one of those two
+deploy.yml's "Read tool versions" step; both download ShellCheck, shfmt and
+actionlint as static binaries at that exact version into `.tools/` rather than
+trusting the machine or the runner image (CI caches that directory, keyed on
+`.tool-versions`), and `validate.sh` asserts the pin against any `PATH` copy it
+has to fall back to (hard error; Node stays a warning, since a mismatched engine
+can pass locally yet behave differently in CI). Adding a tool to the gate means picking one of those two
 authorities, not both. `.claude/launch.json` defines a "site" launch config on
 port 4174.
 

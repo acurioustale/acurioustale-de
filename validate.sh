@@ -10,16 +10,16 @@
 #             it when package-lock.json changed or a dependency issue is suspected.
 #
 # Node + npm are required (the repo's own tooling, tests and guards run on them).
-# The other CLIs are optional: each is skipped with a notice when absent so this
-# stays runnable everywhere, while CI pins and always enforces them. Install them
-# with: brew install shellcheck shfmt actionlint openjdk, plus `npm install`.
+# The three pinned CLIs are fetched on demand into .tools/ (see below), so only a
+# JVM for vnu still has to be installed by hand: brew install openjdk, plus
+# `npm install`.
 #
 # Two pinning authorities, one rule: tools delivered by npm (Prettier, vnu, ESLint,
 # stylelint, markdownlint, svgo) are pinned by package-lock.json and reached through
 # node_modules, so `npm ci` alone makes CI and local identical. System tools that
 # npm can't deliver (Node, ShellCheck, shfmt, actionlint) are pinned in
-# .tool-versions and asserted below. Nothing is pinned in both places, so the two
-# can't disagree.
+# .tool-versions, and every one of them but Node is downloaded at that exact
+# version below. Nothing is pinned in both places, so the two can't disagree.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -89,6 +89,91 @@ require_version() {
 	exit 1
 }
 
+# ─── Pinned tools ───────────────────────────────────────────────────────────
+# CI never takes ShellCheck, shfmt or actionlint from a package manager: it
+# downloads the exact pinned release on every run. Mirror that here, into .tools/
+# (gitignored, one file per version), so the common local run checks what CI
+# checks instead of printing a skip notice — and so a routine `brew upgrade`
+# can't drift a tool out from under its pin. The pins belong to the project, not
+# to the machine.
+#
+# Falls back to the PATH copy, still version-asserted, when the download is
+# unavailable, so an offline machine degrades to the previous behaviour rather
+# than blocking. Bounded and fail-fast: a stalled release host costs seconds and
+# a fallback, not the run.
+TOOLS_DIR=.tools
+
+# pinned_fetch <dest> <url> [tar-member]. With a member the asset is a tarball
+# and that entry is extracted; without one it is the executable itself. `tar xf`
+# without a compression flag so one code path covers both the .tar.gz and the
+# .tar.xz asset (bsdtar and GNU tar both sniff the format).
+pinned_fetch() {
+	local dest="$1" url="$2" member="${3:-}" tmp
+	[[ -x "$dest" ]] && return 0
+	have curl || return 1
+	tmp="$(mktemp -d)" || return 1
+	if ! curl -sSfL --retry 2 --retry-delay 1 --retry-all-errors --max-time 60 "$url" -o "$tmp/dl"; then
+		rm -rf "$tmp"
+		return 1
+	fi
+	if [[ -n "$member" ]]; then
+		if ! tar xf "$tmp/dl" -C "$tmp" "$member"; then
+			rm -rf "$tmp"
+			return 1
+		fi
+		mv "$tmp/$member" "$tmp/dl"
+	fi
+	mkdir -p "$TOOLS_DIR"
+	chmod +x "$tmp/dl"
+	mv "$tmp/dl" "$dest"
+	rm -rf "$tmp"
+}
+
+# Release-asset naming for this machine. The three projects disagree on how to
+# spell the CPU — the two Go binaries use Go's GOARCH, ShellCheck uses uname's
+# spelling — so resolve both. An unrecognised CPU leaves the slugs empty, the URL
+# 404s, and the PATH fallback takes over.
+tools_os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+case "$(uname -m)" in
+x86_64) tools_cpu=amd64 tools_uname_cpu=x86_64 ;;
+arm64 | aarch64) tools_cpu=arm64 tools_uname_cpu=aarch64 ;;
+*) tools_cpu="" tools_uname_cpu="" ;;
+esac
+
+# Resolve each pinned tool to a command array: the cached pinned copy when we can
+# get it, else the PATH copy, else empty so the stage skips as it always has.
+# Do not start a comment with the first tool's name — that spelling parses as a
+# directive.
+sc_cmd=()
+if pinned_fetch "$TOOLS_DIR/shellcheck-$SHELLCHECK_VERSION" \
+	"https://github.com/koalaman/shellcheck/releases/download/v$SHELLCHECK_VERSION/shellcheck-v$SHELLCHECK_VERSION.$tools_os.$tools_uname_cpu.tar.xz" \
+	"shellcheck-v$SHELLCHECK_VERSION/shellcheck"; then
+	sc_cmd=("$TOOLS_DIR/shellcheck-$SHELLCHECK_VERSION")
+elif have shellcheck; then
+	# The tool prints "version: 0.11.0" on its own line, so pass just that line
+	# (require_version matches whole whitespace-separated tokens).
+	require_version shellcheck "$SHELLCHECK_VERSION" "$(shellcheck --version | grep '^version:')"
+	sc_cmd=(shellcheck)
+fi
+
+shfmt_cmd=()
+if pinned_fetch "$TOOLS_DIR/shfmt-$SHFMT_VERSION" \
+	"https://github.com/mvdan/sh/releases/download/v$SHFMT_VERSION/shfmt_v${SHFMT_VERSION}_${tools_os}_${tools_cpu}"; then
+	shfmt_cmd=("$TOOLS_DIR/shfmt-$SHFMT_VERSION")
+elif have shfmt; then
+	require_version shfmt "$SHFMT_VERSION" "$(shfmt --version)"
+	shfmt_cmd=(shfmt)
+fi
+
+actionlint_cmd=()
+if pinned_fetch "$TOOLS_DIR/actionlint-$ACTIONLINT_VERSION" \
+	"https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/actionlint_${ACTIONLINT_VERSION}_${tools_os}_${tools_cpu}.tar.gz" actionlint; then
+	actionlint_cmd=("$TOOLS_DIR/actionlint-$ACTIONLINT_VERSION")
+elif have actionlint; then
+	require_version actionlint "$ACTIONLINT_VERSION" "$(actionlint --version | head -1)"
+	actionlint_cmd=(actionlint)
+fi
+
 # CI pins Node via .tool-versions. Warn (don't block) on a mismatch: a different
 # engine can pass here yet behave differently in CI.
 ci_node_major="${ci_node_version%%.*}"
@@ -143,13 +228,8 @@ else
 	skip xmllint "sitemap XML check"
 fi
 
-if have shellcheck && have shfmt; then
+if [[ ${#sc_cmd[@]} -gt 0 && ${#shfmt_cmd[@]} -gt 0 ]]; then
 	step "Shell scripts (shellcheck + shfmt)"
-	# ShellCheck prints "version: 0.11.0" on its own line, so pass just that line
-	# (require_version matches whole whitespace-separated tokens). Do not start
-	# this comment with the tool's name — that spelling parses as a directive.
-	require_version shellcheck "$SHELLCHECK_VERSION" "$(shellcheck --version | grep '^version:')"
-	require_version shfmt "$SHFMT_VERSION" "$(shfmt --version)"
 	# Discover every tracked shell script (git ls-files), not just the top-level
 	# *.sh, so the ops/ rsync-jail script is linted too — a shell bug there is
 	# worth catching in the reviewed copy before it is hand-copied to the host.
@@ -157,16 +237,15 @@ if have shellcheck && have shfmt; then
 	while IFS= read -r file; do
 		sh_files+=("$file")
 	done < <(git ls-files '*.sh')
-	shellcheck "${sh_files[@]}"
-	shfmt -d "${sh_files[@]}"
+	"${sc_cmd[@]}" "${sh_files[@]}"
+	"${shfmt_cmd[@]}" -d "${sh_files[@]}"
 else
 	skip shellcheck/shfmt "shell checks"
 fi
 
-if have actionlint; then
+if [[ ${#actionlint_cmd[@]} -gt 0 ]]; then
 	step "Linting workflows (actionlint)"
-	require_version actionlint "$ACTIONLINT_VERSION" "$(actionlint --version | head -1)"
-	actionlint
+	"${actionlint_cmd[@]}"
 else
 	skip actionlint "workflow lint"
 fi
