@@ -77,6 +77,17 @@ workflow runs the Playwright specs (a browser download) on PRs and pushes to
 `main`; the `audit` workflow runs `npm audit` on PRs that change the dependency
 tree and weekly. Deploys gate only on `validate`.
 
+Static analysis is CodeQL, and it is configured **outside the checkout** — GitHub's
+default setup, switched on in Settings > Code security, so nothing here records
+it and `gh api repos/acurioustale/acurioustale-de/code-scanning/default-setup` is
+how you confirm it. It scans the JS (`js/`, `tools/`, the tests) and the workflow
+files, on PRs and weekly, and like the three above it is non-gating: findings land
+in the Security tab as alerts to triage, and deploys still gate only on
+`validate`. The sibling repo additionally runs Semgrep in its own workflow, but
+only to cover its PHP endpoints, which CodeQL has no support for; adding a second
+JS scanner here would duplicate what default setup already reads, so the gap that
+workflow fills does not exist on this side.
+
 Dev deps needing `package.json`: ESLint (plus `@eslint/js`, `@eslint/json`,
 `eslint-plugin-html`, `globals`), stylelint (plus `stylelint-config-standard`),
 markdownlint-cli2, Prettier, `vnu-jar` (the Nu Html Checker jar), svgo, jsdom (DOM
