@@ -1,10 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  withoutOverride,
-  advisorySummary,
-  report,
-} from "../tools/overrides.mjs";
+import { withoutOverride, advisorySummary, report } from "./overrides.mjs";
 
 test("withoutOverride drops the named entry and keeps the rest", () => {
   const pkg = {
@@ -33,6 +29,22 @@ test("withoutOverride removes the overrides key when the entry was the last", ()
   assert.deepEqual(trimmed, { name: "site" });
 });
 
+test("withoutOverride keeps the rest of the manifest, dependencies included", () => {
+  // The trimmed manifest is what gets resolved, so dropping `dependencies`
+  // would audit an empty runtime tree and call every override stale.
+  const pkg = {
+    name: "app",
+    dependencies: { react: "^19.0.0" },
+    devDependencies: { vitest: "^3.0.0" },
+    overrides: { a: "1" },
+  };
+  assert.deepEqual(withoutOverride(pkg, "a"), {
+    name: "app",
+    dependencies: { react: "^19.0.0" },
+    devDependencies: { vitest: "^3.0.0" },
+  });
+});
+
 test("withoutOverride tolerates a manifest with no overrides at all", () => {
   assert.deepEqual(withoutOverride({ name: "site" }, "a"), { name: "site" });
 });
@@ -56,6 +68,21 @@ test("advisorySummary reads the count line whatever its case", () => {
   );
 });
 
+test("advisorySummary skips the report's 'vulnerable versions' prose", () => {
+  // npm's per-advisory block says "Depends on vulnerable versions of x" above
+  // the count. The stem is "vulnerabilit", so that line is not a false match.
+  const output = [
+    "# npm audit report",
+    "",
+    "smol-toml  <=1.7.0",
+    "  markdownlint-cli2  >=0.22.0",
+    "  Depends on vulnerable versions of smol-toml",
+    "",
+    "2 high severity vulnerabilities",
+  ].join("\n");
+  assert.equal(advisorySummary(output), "2 high severity vulnerabilities");
+});
+
 test("advisorySummary is undefined when no line states a count", () => {
   assert.equal(advisorySummary("up to date, audited 1 package"), undefined);
 });
@@ -73,6 +100,54 @@ test("report quotes the remaining advisories for a load-bearing override", () =>
   ]);
   assert.match(out, /smol-toml: still load-bearing - 2 high severity/);
   assert.match(out, /Every override is still earning its place\./);
+});
+
+test("report marks a load-bearing override dev-only when the runtime tree is clean", () => {
+  // A pin protecting build and test tooling is a different finding from one
+  // protecting code served to a visitor, so the line has to say which.
+  const out = report([
+    {
+      name: "smol-toml",
+      advisories: "2 high severity vulnerabilities",
+      runtimeAdvisories: null,
+    },
+  ]);
+  assert.match(
+    out,
+    /smol-toml: still load-bearing \(dev only\) - 2 high severity vulnerabilities/,
+  );
+});
+
+test("report marks a load-bearing override runtime when the runtime tree is dirty", () => {
+  const out = report([
+    {
+      name: "react-dom",
+      advisories: "3 high severity vulnerabilities",
+      runtimeAdvisories: "1 high severity vulnerability",
+    },
+  ]);
+  assert.match(
+    out,
+    /react-dom: still load-bearing \(runtime\) - 3 high severity vulnerabilities/,
+  );
+});
+
+test("report leaves the line unqualified when the caller did not split the tree", () => {
+  // Claiming "dev only" from a measurement nobody took would be worse than
+  // saying nothing, so an absent runtimeAdvisories reads as unmeasured rather
+  // than as a clean runtime tree.
+  const out = report([
+    { name: "a", advisories: "1 low severity vulnerability" },
+  ]);
+  assert.match(out, /a: still load-bearing - 1 low severity vulnerability/);
+  assert.doesNotMatch(out, /dev only|runtime/);
+});
+
+test("report ignores the runtime tree for an override that is stale anyway", () => {
+  const out = report([
+    { name: "a", advisories: null, runtimeAdvisories: null },
+  ]);
+  assert.match(out, /a: STALE - the tree is clean without it\./);
 });
 
 test("report falls back when the audit output states no count", () => {

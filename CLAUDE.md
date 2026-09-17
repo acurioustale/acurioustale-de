@@ -348,12 +348,12 @@ enforced `Content-Security-Policy` — never `-Report-Only`),
 markup declares — its path out of the `og:image` URL, its size out of the
 `og:image:width`/`og:image:height` metas with a missing tag told apart from an
 unreadable value, and the PNG IHDR header the file answers with),
-`css-tokens.mjs`
-(`test/cssTokens.test.js`, the `light-dark()` palette the theme-colour,
-manifest and fallback tests bind to) `overrides.mjs`
-(`test/overrides.test.js`, what a manifest looks like with one `overrides` entry
-removed and how npm's audit verdict reads) and `asset-refs.mjs`
-(`test/assetRefs.test.js`, what counts as a local reference — the URL-carrying
+`shared/css-tokens.mjs`
+(`shared/cssTokens.test.js`, the `light-dark()` palette the theme-colour,
+manifest and fallback tests bind to) `shared/overrides.mjs`
+(`shared/overrides.test.js`, what a manifest looks like with one `overrides`
+entry removed and how npm's audit verdict reads) and `shared/asset-refs.mjs`
+(`shared/assetRefs.test.js`, what counts as a local reference — the URL-carrying
 attributes incl. `srcset` lists, the share-image metas whose same-origin
 absolute URL an attribute-only scan misses, `url()` targets resolved against
 their stylesheet's directory, and the manifest lists). `test/lastDeployStamp.test.js` and
@@ -366,14 +366,15 @@ it.
 
 ### The mirrored `tools/shared/` bundle
 
-The first six of those helpers — `html-tags.mjs`, `html-comments.mjs`,
+Every one of those helpers — `html-tags.mjs`, `html-comments.mjs`,
 `inline-scripts.mjs`, `csp-directives.mjs`, `htaccess-csp.mjs`,
-`og-dimensions.mjs` — live in
-`tools/shared/` and are duplicated **byte-for-byte** in the sibling repo
+`og-dimensions.mjs`, `css-tokens.mjs`, `overrides.mjs`, `asset-refs.mjs` — lives
+in `tools/shared/` and is duplicated **byte-for-byte** in the sibling repo
 [acurioustale/comparebuilds-app](https://github.com/acurioustale/comparebuilds-app).
-Both repos validate the same kind of markup, the same `.htaccess` CSP and the
-same Open Graph card with the same guards, and neither wants a private copy of a regex that has already been
-got wrong once. This is deliberately not a package: no publish step, no version
+Both repos validate the same kind of markup, the same `.htaccess` CSP, the same
+Open Graph card, the same `light-dark()` palette, the same `overrides` pins and
+the same local asset references with the same guards, and neither wants a
+private copy of a regex that has already been got wrong once. This is deliberately not a package: no publish step, no version
 to bump, no dependency for a site that ships none — a vendored bundle plus an
 alarm.
 
@@ -385,8 +386,9 @@ across two repos that put their tests in different places — a test importing
 resolves in both. `node --test` discovers them recursively, so nothing about the
 test or coverage scripts needed to change except one exclusion: `npm run
 coverage` excludes `tools/shared/**/*.test.js`, or the bundle's tests would be
-counted as gated source. The five helpers themselves stay squarely inside the
-coverage gate, at 100%, where they belong.
+counted as gated source. The helpers themselves stay squarely inside the
+coverage gate, at 100%, where they belong — the exclusion is written to match
+tests, not a list of files, so it does not go stale as the bundle grows.
 
 What may go in follows from the same constraint. Everything in the bundle —
 helpers and tests alike — depends on the Node standard library and nothing else:

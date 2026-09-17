@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { lightDarkTokens } from "../tools/css-tokens.mjs";
+import { lightDarkTokens } from "../tools/shared/css-tokens.mjs";
 
 // The PWA manifest's background_color and theme_color drive the installed app's
 // splash screen and OS chrome. Both are the dark page background, so — like the

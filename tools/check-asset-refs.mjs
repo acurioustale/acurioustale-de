@@ -7,7 +7,7 @@
 // passed the whole gate (the renamed file still ships and classifies) yet 404s
 // in the browser / on install.
 //
-// What counts as a reference lives in tools/asset-refs.mjs (with its own test),
+// What counts as a reference lives in tools/shared/asset-refs.mjs (with its own test),
 // not in a private regex here: <link>/<script>/<img>/<source>/<video>/<audio>
 // URL attributes including srcset lists, the share-image metas (og:image,
 // twitter:image — absolute, same-origin URLs, which an attribute-only scan
@@ -28,7 +28,7 @@ import {
   htmlRefs,
   localPath,
   manifestRefs,
-} from "./asset-refs.mjs";
+} from "./shared/asset-refs.mjs";
 
 const root = new URL("../", import.meta.url);
 const html = await readFile(new URL("index.html", root), "utf8");
