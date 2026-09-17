@@ -1,11 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseSecurityTxt, expiryStatus } from "../tools/security-txt.mjs";
+import { parseSecurityTxt, expiryStatus } from "./security-txt.mjs";
 
-// The helper behind the expiry guard and the SECURITY.md parity suite. Both read
-// the same file, so the reading itself is what has to be right: a field parser
-// that quietly drops a line, or an expiry comparison off by a boundary, fails in
-// the fail-open direction — the guard passes while the published contact is
+// The helper behind the expiry guard and the parity suite. Both read the same
+// file, so the reading itself is what has to be right: a field parser that
+// quietly drops a line, or an expiry comparison off by a boundary, fails in the
+// fail-open direction — the check passes while the published contact is
 // invalid. These are the cases a real file can present.
 //
 // Every assertion here pins a fixed `now` against a fixed date. Nothing in this

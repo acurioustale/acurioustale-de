@@ -33,16 +33,13 @@ the last 60 days, and exits 1 only once it has lapsed — a warning that fails i
 just a failure with extra steps. Renewing is a one-line edit, and a human one:
 re-confirm the contacts still hold, then set a new date.
 
-The RFC 9116 field parsing both halves need is `tools/security-txt.mjs`
-(`parseSecurityTxt`, `expiryStatus`), tested in `test/securityTxt.test.js` — a
-helper with a test, per the rule below, not a regex written twice. It is not in
-the mirrored `tools/shared/` bundle even though the sibling repo publishes a
-security.txt too: the bundle's entry condition is byte-for-byte identity of
-helper _and_ test, and the sibling's test for this one is written for vitest,
-which the bundle's stdlib-only rule excludes. Both repos keep their own copy in
-`tools/`, which at least keeps the two layouts symmetric. Should the sibling ever
-move its test to `node:test`, promoting this helper into the bundle is the
-obvious follow-up.
+The RFC 9116 field parsing both halves need is
+`tools/shared/security-txt.mjs` (`parseSecurityTxt`, `expiryStatus`), tested in
+`tools/shared/securityTxt.test.js` — a helper with a test, per the rule below,
+not a regex written twice. It is in the mirrored bundle, because the sibling
+repo publishes a security.txt and parses it the same way; the two repo-specific
+halves are not, and stay in `tools/` and `test/`, because they name this site's
+file, prose policy and canonical origin.
 
 ## Commands
 
@@ -381,7 +378,10 @@ entry removed and how npm's audit verdict reads) and `shared/asset-refs.mjs`
 (`shared/assetRefs.test.js`, what counts as a local reference — the URL-carrying
 attributes incl. `srcset` lists, the share-image metas whose same-origin
 absolute URL an attribute-only scan misses, `url()` targets resolved against
-their stylesheet's directory, and the manifest lists). `test/lastDeployStamp.test.js` and
+their stylesheet's directory, and the manifest lists) and
+`shared/security-txt.mjs` (`shared/securityTxt.test.js`, the RFC 9116 `Name:
+value` fields with a repeated name kept in file order, and what `Expires` says
+about the file's remaining life). `test/lastDeployStamp.test.js` and
 `test/lastLoginStamp.test.js` do the same for `deploy.sh`'s two stamping
 regexes. When a guard needs to read something new, add it as a helper with a
 test — never a private regex inside the guard. The repo's most common gate
@@ -393,13 +393,15 @@ it.
 
 Every one of those helpers — `html-tags.mjs`, `html-comments.mjs`,
 `inline-scripts.mjs`, `csp-directives.mjs`, `htaccess-csp.mjs`,
-`og-dimensions.mjs`, `css-tokens.mjs`, `overrides.mjs`, `asset-refs.mjs` — lives
-in `tools/shared/` and is duplicated **byte-for-byte** in the sibling repo
+`og-dimensions.mjs`, `css-tokens.mjs`, `overrides.mjs`, `asset-refs.mjs`,
+`security-txt.mjs` — lives in `tools/shared/` and is duplicated
+**byte-for-byte** in the sibling repo
 [acurioustale/comparebuilds-app](https://github.com/acurioustale/comparebuilds-app).
 Both repos validate the same kind of markup, the same `.htaccess` CSP, the same
-Open Graph card, the same `light-dark()` palette, the same `overrides` pins and
-the same local asset references with the same guards, and neither wants a
-private copy of a regex that has already been got wrong once. This is deliberately not a package: no publish step, no version
+Open Graph card, the same `light-dark()` palette, the same `overrides` pins, the
+same local asset references and the same RFC 9116 security.txt with the same
+guards, and neither wants a private copy of a regex that has already been got
+wrong once. This is deliberately not a package: no publish step, no version
 to bump, no dependency for a site that ships none — a vendored bundle plus an
 alarm.
 
