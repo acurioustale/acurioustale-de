@@ -98,8 +98,10 @@ deploy.yml's "Read tool versions" step; both download ShellCheck, shfmt and
 actionlint as static binaries at that exact version into `.tools/` rather than
 trusting the machine or the runner image (CI caches that directory, keyed on
 `.tool-versions`), and `validate.sh` asserts the pin against any `PATH` copy it
-has to fall back to (hard error; Node stays a warning, since a mismatched engine
-can pass locally yet behave differently in CI). Adding a tool to the gate means picking one of those two
+has to fall back to (hard error). Node is the one pin `validate.sh` cannot fetch
+for you, so it gets two bars: a wrong major is a hard error, since the JS half of
+the gate would then prove nothing about CI, while a minor/patch difference is a
+note (the gate still runs; `mise install node` applies the pin). Adding a tool to the gate means picking one of those two
 authorities, not both. `.claude/launch.json` defines a "site" launch config on
 port 4174.
 

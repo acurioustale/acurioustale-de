@@ -144,16 +144,16 @@ esac
 # get it, else the PATH copy, else empty so the stage skips as it always has.
 # Do not start a comment with the first tool's name — that spelling parses as a
 # directive.
-sc_cmd=()
+shellcheck_cmd=()
 if pinned_fetch "$TOOLS_DIR/shellcheck-$SHELLCHECK_VERSION" \
 	"https://github.com/koalaman/shellcheck/releases/download/v$SHELLCHECK_VERSION/shellcheck-v$SHELLCHECK_VERSION.$tools_os.$tools_uname_cpu.tar.xz" \
 	"shellcheck-v$SHELLCHECK_VERSION/shellcheck"; then
-	sc_cmd=("$TOOLS_DIR/shellcheck-$SHELLCHECK_VERSION")
+	shellcheck_cmd=("$TOOLS_DIR/shellcheck-$SHELLCHECK_VERSION")
 elif have shellcheck; then
 	# The tool prints "version: 0.11.0" on its own line, so pass just that line
 	# (require_version matches whole whitespace-separated tokens).
 	require_version shellcheck "$SHELLCHECK_VERSION" "$(shellcheck --version | grep '^version:')"
-	sc_cmd=(shellcheck)
+	shellcheck_cmd=(shellcheck)
 fi
 
 shfmt_cmd=()
@@ -174,12 +174,27 @@ elif have actionlint; then
 	actionlint_cmd=(actionlint)
 fi
 
-# CI pins Node via .tool-versions. Warn (don't block) on a mismatch: a different
-# engine can pass here yet behave differently in CI.
+# CI pins Node through this same file, so a local mismatch means the JS stages
+# below prove nothing about CI. The pin names an exact release, which is what
+# setup-node then installs - a bare major would let CI silently follow whatever
+# the newest 26.x happened to be that week, so "the same Node as CI" would be a
+# different engine from one run to the next.
+#
+# Two bars, because Node is the one pin validate.sh cannot fetch for you (every
+# other pinned tool lands in .tools/ on its own; a Node engine has to be
+# installed). A different MAJOR blocks: the JS stages would prove nothing about
+# CI. A minor or patch difference notes: worth fixing so local matches CI
+# exactly, not worth refusing to run over. `mise install node` applies the pin.
+local_node_version="$(node -v | sed 's/^v//')"
 ci_node_major="${ci_node_version%%.*}"
-local_node_major="$(node -v | sed 's/^v//; s/\..*//')"
+local_node_major="${local_node_version%%.*}"
 if [[ "$local_node_major" != "$ci_node_major" ]]; then
-	echo "warning: local Node is v$local_node_major, CI uses v$ci_node_major." >&2
+	echo "  Node version mismatch: want v$ci_node_version, got: $(node -v)" >&2
+	echo "  install the pinned version (see .tool-versions) so local matches CI" >&2
+	exit 1
+elif [[ "$local_node_version" != "$ci_node_version" ]]; then
+	echo "note: Node v$local_node_version is not the pinned v$ci_node_version" \
+		"(same major, so the gate still runs; \`mise install node\` applies the pin)." >&2
 fi
 
 if [[ "$do_clean" -eq 1 ]]; then
@@ -228,19 +243,35 @@ else
 	skip xmllint "sitemap XML check"
 fi
 
-if [[ ${#sc_cmd[@]} -gt 0 && ${#shfmt_cmd[@]} -gt 0 ]]; then
-	step "Shell scripts (shellcheck + shfmt)"
-	# Discover every tracked shell script (git ls-files), not just the top-level
-	# *.sh, so the ops/ rsync-jail script is linted too — a shell bug there is
-	# worth catching in the reviewed copy before it is hand-copied to the host.
-	sh_files=()
-	while IFS= read -r file; do
-		sh_files+=("$file")
-	done < <(git ls-files '*.sh')
-	"${sc_cmd[@]}" "${sh_files[@]}"
-	"${shfmt_cmd[@]}" -d "${sh_files[@]}"
+# Shell scripts: correctness first, formatting second. Each tool is resolved and
+# skipped on its own — they are separate tools, and gating one on the other meant
+# a machine missing the linter also skipped the pinned formatter it had already
+# downloaded. Discover every tracked shell script once (git ls-files), not just
+# the top-level *.sh, so the ops/ rsync-jail script is checked too — a shell bug
+# there is worth catching in the reviewed copy before it is hand-copied to the
+# host. Empty-array guard as elsewhere: on bash 3.2 (the macOS default)
+# "${sh_files[@]}" trips set -u when nothing matched.
+sh_files=()
+while IFS= read -r file; do
+	sh_files+=("$file")
+done < <(git ls-files '*.sh')
+
+if [[ ${#sh_files[@]} -eq 0 ]]; then
+	echo "  no shell scripts found to check" >&2
 else
-	skip shellcheck/shfmt "shell checks"
+	if [[ ${#shellcheck_cmd[@]} -gt 0 ]]; then
+		step "Shell scripts (shellcheck)"
+		"${shellcheck_cmd[@]}" "${sh_files[@]}"
+	else
+		skip shellcheck "the shell lint"
+	fi
+
+	if [[ ${#shfmt_cmd[@]} -gt 0 ]]; then
+		step "Shell scripts (shfmt)"
+		"${shfmt_cmd[@]}" -d "${sh_files[@]}"
+	else
+		skip shfmt "the shell formatting check"
+	fi
 fi
 
 if [[ ${#actionlint_cmd[@]} -gt 0 ]]; then
