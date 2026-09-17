@@ -10,17 +10,19 @@ import {
   htmlRefs,
   cssRefs,
   manifestRefs,
-} from "../tools/asset-refs.mjs";
+} from "./asset-refs.mjs";
 
-const SITE = "https://acurioustale.de";
+// A neutral fixture origin: the bundle is mirrored byte-for-byte across repos,
+// so no test here may name either site's real hostname.
+const SITE = "https://example.test";
 const origins = new Set([SITE]);
 
 // --- declaredOrigins --------------------------------------------------------
 
 test("declaredOrigins reads the site origin from canonical and og:url", () => {
   const found = declaredOrigins(`
-    <link rel="canonical" href="https://acurioustale.de/" />
-    <meta property="og:url" content="https://acurioustale.de/" />
+    <link rel="canonical" href="${SITE}/" />
+    <meta property="og:url" content="${SITE}/" />
   `);
   assert.deepEqual([...found], [SITE]);
 });
@@ -63,14 +65,14 @@ test("localPath accepts a same-origin absolute URL and rejects a foreign one", (
     "assets/og-image.png",
   );
   assert.equal(
-    localPath("https://example.com/assets/og-image.png", { origins }),
+    localPath("https://elsewhere.test/assets/og-image.png", { origins }),
     undefined,
   );
   assert.equal(
-    localPath("//acurioustale.de/assets/og-image.png", { origins }),
+    localPath("//example.test/assets/og-image.png", { origins }),
     "assets/og-image.png",
   );
-  assert.equal(localPath("mailto:me@acurioustale.de", { origins }), undefined);
+  assert.equal(localPath("mailto:nobody@example.test", { origins }), undefined);
   assert.equal(localPath("data:image/png;base64,AAAA", { origins }), undefined);
 });
 
@@ -144,8 +146,8 @@ const PAGE = `
   <link rel="canonical" href="${SITE}/" />
   <link rel="icon" href="assets/favicon.svg" />
   <link rel="preload" as="image" imagesrcset="assets/wide.png 1200w, assets/narrow.png 600w" />
-  <link rel="me" href="https://github.com/example" />
-  <script src="js/terminal.js" type="module"></script>
+  <link rel="me" href="https://elsewhere.test/example" />
+  <script src="js/app.js" type="module"></script>
   <script>inline()</script>
   <meta property="og:image" content="${SITE}/assets/og-image.png" />
   <meta name="twitter:image" content="${SITE}/assets/og-image.png" />
@@ -154,6 +156,7 @@ const PAGE = `
   <video src="assets/clip.mp4" poster="assets/poster.png"></video>
   <audio src="assets/clip.mp3"></audio>
   <source srcset="assets/alt.png" />
+  <a href="/somewhere/">a route, not an asset</a>
 `;
 
 test("htmlRefs collects every local reference and no foreign one", () => {
@@ -171,21 +174,35 @@ test("htmlRefs collects every local reference and no foreign one", () => {
     "assets/shot.png",
     "assets/shot@2x.png",
     "assets/wide.png",
-    "js/terminal.js",
+    "js/app.js",
   ]);
 });
 
 test("htmlRefs names the source of each reference", () => {
   const refs = htmlRefs(PAGE);
   const shareImage = refs.find((r) => r.where.includes("twitter:image"));
-  assert.match(shareImage.where, /content="https:\/\/acurioustale\.de\//);
+  assert.match(shareImage.where, /content="https:\/\/example\.test\//);
   const srcset = refs.find((r) => r.where.includes("<img srcset>"));
   assert.match(srcset.where, /assets\/shot/);
 });
 
+test("htmlRefs prefixes the location with the document label", () => {
+  const refs = htmlRefs(`<link rel="icon" href="/assets/favicon.svg" />`);
+  assert.equal(refs[0].where, `index.html <link href="/assets/favicon.svg">`);
+  const labelled = htmlRefs(
+    `<link rel="icon" href="/assets/favicon.svg" />`,
+    new Set(),
+    "mage/frost/index.html",
+  );
+  assert.equal(
+    labelled[0].where,
+    `mage/frost/index.html <link href="/assets/favicon.svg">`,
+  );
+});
+
 test("htmlRefs takes the share image only when the origin is ours", () => {
   const foreign = `
-    <link rel="canonical" href="https://example.org/" />
+    <link rel="canonical" href="https://elsewhere.test/" />
     <meta property="og:image" content="${SITE}/assets/og-image.png" />
   `;
   assert.deepEqual(htmlRefs(foreign), []);
@@ -244,6 +261,18 @@ test("manifestRefs collects icon and screenshot sources", () => {
   );
   assert.match(refs[0].where, /manifest\.webmanifest icons src=/);
   assert.match(refs[1].where, /manifest\.webmanifest screenshots src=/);
+});
+
+test("manifestRefs prefixes the location with the manifest label", () => {
+  const refs = manifestRefs(
+    JSON.stringify({ icons: [{ src: "/icon.png" }] }),
+    new Set(),
+    "dist/manifest.webmanifest",
+  );
+  assert.equal(
+    refs[0].where,
+    `dist/manifest.webmanifest icons src="/icon.png"`,
+  );
 });
 
 test("manifestRefs tolerates a manifest with neither list", () => {

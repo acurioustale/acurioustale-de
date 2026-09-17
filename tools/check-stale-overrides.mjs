@@ -21,13 +21,13 @@
 // urgent. Run from the non-gating `audit` workflow, never from validate.sh or
 // the gate — it costs a resolution and a registry round-trip per override.
 //
-// The decisions that don't need a subprocess live in tools/overrides.mjs, with a
+// The decisions that don't need a subprocess live in tools/shared/overrides.mjs, with a
 // test; this file is the part that has to shell out.
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { withoutOverride, report } from "./overrides.mjs";
+import { withoutOverride, report } from "./shared/overrides.mjs";
 
 const pkg = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),

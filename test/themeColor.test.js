@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { lightDarkTokens } from "../tools/css-tokens.mjs";
+import { lightDarkTokens } from "../tools/shared/css-tokens.mjs";
 import { findTags } from "../tools/shared/html-tags.mjs";
 
 // The browser-chrome tint is set by two <meta name="theme-color"> tags, one per

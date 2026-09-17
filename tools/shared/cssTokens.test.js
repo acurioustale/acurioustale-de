@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { lightDarkTokens } from "../tools/css-tokens.mjs";
+import { lightDarkTokens } from "./css-tokens.mjs";
 
 test("lightDarkTokens maps each light-dark() token to its lower-cased pair", () => {
   const css = `
@@ -27,13 +27,44 @@ test("lightDarkTokens parses a declaration with whitespace before the colon", ()
   });
 });
 
-test("lightDarkTokens still hard-fails a spaced non-hex declaration", () => {
+test("lightDarkTokens still hard-fails a spaced unparseable declaration", () => {
   // The space-before-colon tolerance must not create a new silent-skip hole:
-  // a spaced declaration with a non-hex value is still caught by completeness.
+  // a spaced declaration with an unparseable value is still caught.
   assert.throws(
     () => lightDarkTokens("--accent : light-dark(white, black);"),
     /--accent/,
   );
+});
+
+test("lightDarkTokens parses functional colour notations", () => {
+  // A translucent palette entry can't be written as hex without losing the
+  // channel syntax, so both the space/slash and the legacy comma form parse.
+  // Internal whitespace is collapsed so two spellings of one colour compare
+  // equal; the value is otherwise kept verbatim.
+  const tokens = lightDarkTokens(
+    "--panel: light-dark(RGB(255  250 238 / 92%), rgba(10, 8, 4, 0.88));" +
+      "--ink: light-dark(oklch(0.2 0 0), #fff);",
+  );
+  assert.deepEqual(tokens.get("panel"), {
+    light: "rgb(255 250 238 / 92%)",
+    dark: "rgba(10, 8, 4, 0.88)",
+  });
+  assert.deepEqual(tokens.get("ink"), {
+    light: "oklch(0.2 0 0)",
+    dark: "#fff",
+  });
+});
+
+test("lightDarkTokens throws on a function that is not a colour notation", () => {
+  // `var()` and a nested `color-mix()` are not colours this resolves. Accepting
+  // them would hand a guard a string that is not the painted colour, so the
+  // function names are an explicit list and anything else fails loudly.
+  for (const value of [
+    "light-dark(var(--a), var(--b))",
+    "light-dark(color-mix(in srgb, #fff 50%, #000), #111)",
+  ]) {
+    assert.throws(() => lightDarkTokens(`--accent: ${value};`), /--accent/);
+  }
 });
 
 test("lightDarkTokens ignores non light-dark() custom properties", () => {
@@ -44,7 +75,8 @@ test("lightDarkTokens ignores non light-dark() custom properties", () => {
 test("lightDarkTokens ignores light-dark() tokens inside CSS comments", () => {
   // A commented-out palette line must not be parsed into the map (a phantom
   // token the drift guards would then compare against) nor tripped over by the
-  // completeness check (a commented non-hex value must not hard-fail the build).
+  // completeness check (a commented unparseable value must not hard-fail the
+  // build).
   const css = `
     /* old: --page-bg: light-dark(oldwhite, oldblack); */
     --page-bg: light-dark(#e8e6df, #0e0f10);
@@ -60,13 +92,10 @@ test("lightDarkTokens ignores light-dark() tokens inside CSS comments", () => {
 });
 
 test("lightDarkTokens throws on a light-dark() token it can't parse", () => {
-  // A non-hex value (a named colour, rgb()/hsl()) would otherwise be dropped
-  // silently, and the drift guards that read the map would stop checking that
-  // token. It must be a loud failure, not a quiet skip.
-  for (const value of [
-    "light-dark(white, black)",
-    "light-dark(rgb(0,0,0), #fff)",
-  ]) {
+  // A bare keyword would otherwise be dropped silently, and the drift guards
+  // that read the map would stop checking that token. It must be a loud
+  // failure, not a quiet skip.
+  for (const value of ["light-dark(white, black)", "light-dark(white, #fff)"]) {
     assert.throws(() => lightDarkTokens(`--accent: ${value};`), /--accent/);
   }
 });
@@ -80,11 +109,11 @@ test("lightDarkTokens uses the last declaration when a token is redeclared", () 
   assert.deepEqual(tokens.get("x"), { light: "#333", dark: "#444" });
 });
 
-test("lightDarkTokens throws on a non-hex redeclaration of a parsed token", () => {
+test("lightDarkTokens throws on an unparseable redeclaration of a parsed token", () => {
   // The hole this guards: a valid first declaration must not suppress the
-  // completeness error for a later non-hex one. Otherwise the map keeps the
-  // superseded hex value while the cascade uses the unparsed colour, and the
-  // palette drift guards silently validate against a colour the page dropped.
+  // completeness error for a later unparseable one. Otherwise the map keeps the
+  // superseded value while the cascade uses the unparsed colour, and the palette
+  // drift guards silently validate against a colour the page dropped.
   assert.throws(
     () =>
       lightDarkTokens(
@@ -94,7 +123,7 @@ test("lightDarkTokens throws on a non-hex redeclaration of a parsed token", () =
   );
 });
 
-test("lightDarkTokens throws on a non-hex token even when a later token parses", () => {
+test("lightDarkTokens throws on an unparseable token even when a later token parses", () => {
   // The offending token is named, and a parseable declaration further down
   // doesn't mask an earlier unparseable one.
   assert.throws(

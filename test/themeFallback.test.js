@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { lightDarkTokens } from "../tools/css-tokens.mjs";
+import { lightDarkTokens } from "../tools/shared/css-tokens.mjs";
 
 // The colour palette lives once as `--token: light-dark(<light>, <dark>)`, but
 // browsers without light-dark() support get a fallback: the plain `:root` block

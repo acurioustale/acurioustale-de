@@ -1,18 +1,26 @@
-// Shared reference scanner: every local file the shipped markup, the stylesheets
-// and the manifest point at. tools/check-asset-refs.mjs asserts each one is a
-// tracked file; the rules for *finding* a reference live here, with a test of
-// their own, rather than as a private regex inside the guard.
+// Shared reference scanner: every local file a page's markup, its stylesheets
+// and a web app manifest point at. A guard built on this asserts each one
+// exists; the rules for *finding* a reference live here, with a test of their
+// own, rather than as a private regex inside the guard.
 //
 // Three rules have to be right, and each is easy to get subtly wrong on real
 // input: which attributes carry a reference (an <img srcset> holds several,
 // comma-separated, each with a descriptor), what counts as local (a same-origin
 // absolute URL such as the og:image/twitter:image share image is local, an
-// off-site one is not), and what a reference resolves against (a url() in
-// css/style.css is relative to css/, not to the repo root).
+// off-site one is not), and what a reference resolves against (a url() inside a
+// stylesheet is relative to that stylesheet's directory, not to the web root).
 //
-// Dependency-free on purpose: the shared HTML scanner plus small scans over our
-// own well-formed markup and CSS, not a general parser.
-import { findTags } from "./shared/html-tags.mjs";
+// The `label` on htmlRefs/manifestRefs is what the reported location is prefixed
+// with. It is a parameter rather than a constant because the caller knows which
+// document it handed over — one repo scans a single source index.html, another
+// scans a built entry page plus a directory of prerendered ones — and an error
+// naming the wrong page is worse than no prefix at all. The defaults are the
+// conventional names for the two documents, for a caller that only has one of
+// each.
+//
+// Dependency-free on purpose: the shared HTML scanner plus small scans over
+// well-formed markup and CSS, not a general parser.
+import { findTags } from "./html-tags.mjs";
 
 // The origins that are "us": the site's own, taken from the markup so nothing
 // hardcodes the hostname. <link rel="canonical"> and og:url both carry it; a
@@ -34,14 +42,14 @@ export function declaredOrigins(html) {
   return origins;
 }
 
-// The repo-relative path a reference points at, or undefined when it is not a
-// local file this repo ships. A scheme or protocol-relative URL is local only
-// when its origin is one of ours (so the absolute share-image URL is checked,
-// while an off-site image is skipped); a fragment is in-page; a bare root or a
-// directory path resolves to a listing, not a file. A root-relative "/" path is
-// taken from the web root, anything else from `base` — the directory the
-// referencing file sits in, so a url() inside css/ resolves under css/. Percent
-// escapes are decoded, since git tracks the decoded name.
+// The web-root-relative path a reference points at, or undefined when it is not
+// a local file. A scheme or protocol-relative URL is local only when its origin
+// is one of ours (so the absolute share-image URL is checked, while an off-site
+// image is skipped); a fragment is in-page; a bare root or a directory path
+// resolves to a listing, not a file. A root-relative "/" path is taken from the
+// web root, anything else from `base` — the directory the referencing file sits
+// in, so a url() inside a stylesheet resolves beside that stylesheet. Percent
+// escapes are decoded, since a filesystem and git both hold the decoded name.
 export function localPath(ref, { origins = new Set(), base = "" } = {}) {
   if (!ref) return undefined;
   let value = ref.trim();
@@ -76,7 +84,7 @@ function decode(path) {
   }
 }
 
-// The directory part of a repo-relative file path, with its trailing slash
+// The directory part of a relative file path, with its trailing slash
 // ("css/style.css" → "css/", "index.html" → "").
 export function dirOf(path) {
   const cut = path.lastIndexOf("/");
@@ -126,7 +134,8 @@ export function cssUrls(css) {
 
 // The attributes that carry a local reference, per element. `srcset` holds a
 // list, the rest a single URL. A <meta> is handled separately: its reference
-// lives in `content`, and only for the image properties below.
+// lives in `content`, and only for the image properties below. An <a href> is
+// deliberately absent: it names a route, not a file to ship.
 const URL_ATTRS = [
   { tag: "link", single: ["href"], list: ["imagesrcset"] },
   { tag: "script", single: ["src"] },
@@ -147,7 +156,11 @@ const IMAGE_METAS = [
 ];
 
 // Every local reference in `html`, as { path, where }.
-export function htmlRefs(html, origins = declaredOrigins(html)) {
+export function htmlRefs(
+  html,
+  origins = declaredOrigins(html),
+  label = "index.html",
+) {
   const refs = [];
   const push = (path, where) => {
     if (path) refs.push({ path, where });
@@ -158,14 +171,14 @@ export function htmlRefs(html, origins = declaredOrigins(html)) {
         const value = el.attrs.get(attr);
         push(
           localPath(value, { origins }),
-          `index.html <${tag} ${attr}="${value}">`,
+          `${label} <${tag} ${attr}="${value}">`,
         );
       }
       for (const attr of list) {
         for (const url of parseSrcset(el.attrs.get(attr) ?? "")) {
           push(
             localPath(url, { origins }),
-            `index.html <${tag} ${attr}> "${url}"`,
+            `${label} <${tag} ${attr}> "${url}"`,
           );
         }
       }
@@ -176,7 +189,7 @@ export function htmlRefs(html, origins = declaredOrigins(html)) {
       const content = meta.attrs.get("content");
       push(
         localPath(content, { origins }),
-        `index.html <meta ${attr}="${value}" content="${content}">`,
+        `${label} <meta ${attr}="${value}" content="${content}">`,
       );
     }
   }
@@ -194,18 +207,19 @@ export function cssRefs(css, path, origins = new Set()) {
   return refs;
 }
 
-// Every local reference in the web app manifest: the icon and screenshot lists.
-export function manifestRefs(manifestText, origins = new Set()) {
+// Every local reference in a web app manifest: the icon and screenshot lists.
+export function manifestRefs(
+  manifestText,
+  origins = new Set(),
+  label = "manifest.webmanifest",
+) {
   const manifest = JSON.parse(manifestText);
   const refs = [];
   for (const field of ["icons", "screenshots"]) {
     for (const entry of manifest[field] ?? []) {
       const path = localPath(entry?.src, { origins });
       if (path)
-        refs.push({
-          path,
-          where: `manifest.webmanifest ${field} src="${entry.src}"`,
-        });
+        refs.push({ path, where: `${label} ${field} src="${entry.src}"` });
     }
   }
   return refs;
