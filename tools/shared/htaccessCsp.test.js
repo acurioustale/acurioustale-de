@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { readHeaderCsp } from "../tools/htaccess-csp.mjs";
+import { readHeaderCsp } from "./htaccess-csp.mjs";
 
 test("readHeaderCsp reads a top-level Header set directive", () => {
   const { headerCsp, scopesUnbalanced } = readHeaderCsp(

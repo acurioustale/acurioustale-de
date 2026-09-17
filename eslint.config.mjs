@@ -29,8 +29,10 @@ export default [
   },
 
   // Node-run code: the test suite (node --test) and the dev-time CI checks.
+  // tools/**/*.js is here for the mirrored bundle's tests, which live beside
+  // the helpers they cover rather than in test/ (see CLAUDE.md).
   {
-    files: ["test/**/*.js", "tools/**/*.mjs"],
+    files: ["test/**/*.js", "tools/**/*.mjs", "tools/**/*.js"],
     languageOptions: {
       globals: { ...globals.node },
     },

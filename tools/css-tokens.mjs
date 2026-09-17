@@ -53,7 +53,7 @@ export function lightDarkTokens(css) {
   // completeness check below (a commented `--x: light-dark(white, black)` would
   // otherwise hard-fail the build). CSS comments don't nest, so a non-greedy
   // body ends each at its first `*/`, exactly as the CSS tokenizer does. The
-  // HTML guards skip comments the same way via tools/html-comments.mjs.
+  // HTML guards skip comments the same way via tools/shared/html-comments.mjs.
   const src = css.replace(/\/\*[\s\S]*?\*\//g, "");
   const tokens = new Map();
   // Walk every `--token: light-dark(` declaration in source order and parse it

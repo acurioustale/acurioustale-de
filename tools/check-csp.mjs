@@ -13,10 +13,10 @@
 // not a general HTML/Apache parser.
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
-import { isInlineScript, scriptElements } from "./inline-scripts.mjs";
-import { findTags, countRawTextOpeners } from "./html-tags.mjs";
-import { readHeaderCsp } from "./htaccess-csp.mjs";
-import { parseCsp, comparePolicies } from "./csp-directives.mjs";
+import { isInlineScript, scriptElements } from "./shared/inline-scripts.mjs";
+import { findTags, countRawTextOpeners } from "./shared/html-tags.mjs";
+import { readHeaderCsp } from "./shared/htaccess-csp.mjs";
+import { parseCsp, comparePolicies } from "./shared/csp-directives.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 const htaccess = await readFile(
@@ -24,14 +24,14 @@ const htaccess = await readFile(
   "utf8",
 );
 
-// The <meta> CSP, read through the shared tools/html-tags.mjs scanner: it finds
-// the <meta> tags (quote-aware, and tag-name anchored so a different element
-// like <metadata> can't be read as the policy source) and skips any inside an
-// HTML comment, so a documented sample or an old policy kept for reference is
-// ignored and the first LIVE match wins. That first-match rule is safe because a
-// browser enforces every delivered <meta> CSP simultaneously (the intersection),
-// so a later meta can only tighten, never loosen, and validating the first can't
-// miss a weakening. The .htaccess header below is the opposite: Apache's
+// The <meta> CSP, read through the shared tools/shared/html-tags.mjs scanner:
+// it finds the <meta> tags (quote-aware, and tag-name anchored so a different
+// element like <metadata> can't be read as the policy source) and skips any
+// inside an HTML comment, so a documented sample or an old policy kept for
+// reference is ignored and the first LIVE match wins. That first-match rule is
+// safe because a browser enforces every delivered <meta> CSP simultaneously (the
+// intersection), so a later meta can only tighten, never loosen, and validating
+// the first can't miss a weakening. The .htaccess header below is the opposite: Apache's
 // `Header set` replaces, so there the last directive wins.
 const [cspMeta] = findTags(html, "meta", {
   "http-equiv": "Content-Security-Policy",
@@ -39,8 +39,8 @@ const [cspMeta] = findTags(html, "meta", {
 const metaCsp = cspMeta?.attrs.get("content");
 
 // The header CSP: the `Header [always] set Content-Security-Policy "..."`
-// directive in .htaccess, read through tools/htaccess-csp.mjs. It skips Apache
-// comments and commented-out examples, reassembles a backslash-continued
+// directive in .htaccess, read through tools/shared/htaccess-csp.mjs. It skips
+// Apache comments and commented-out examples, reassembles a backslash-continued
 // directive, requires the `Header set` form, takes the LAST live match (Apache's
 // `Header set` replaces, so the browser is served the last of repeated headers),
 // and ignores any directive inside a request-scoping container while flagging an

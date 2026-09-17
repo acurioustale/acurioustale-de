@@ -220,12 +220,13 @@ jobs:
       # favicon/icon/module can't 404), and if a tracked site file is missing
       # from deploy.sh's DEPLOY_ASSETS (so a new asset can't be silently left out
       # of the deploy).
-      - name: Check CSP, og-image, asset refs and deploy set
+      - name: Check CSP, og-image, asset refs, deploy set and shared bundle
         run: |
           npm run check:csp
           npm run check:og
           npm run check:asset-refs
           npm run check:deploy-assets
+          npm run check:shared
 
       # svgo keeps every tracked SVG optimised; the check fails if any would
       # change. SVGs are discovered with git ls-files (like the shell-lint step)

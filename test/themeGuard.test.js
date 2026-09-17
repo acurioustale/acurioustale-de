@@ -6,7 +6,7 @@ import vm from "node:vm";
 import { JSDOM } from "jsdom";
 
 import { normalizeMode, metaMediaFor } from "../js/theme.js";
-import { inlineScripts } from "../tools/inline-scripts.mjs";
+import { inlineScripts } from "../tools/shared/inline-scripts.mjs";
 
 // The pre-paint theme guard in index.html runs before any module can load, so it
 // can't import normalizeMode() and instead hand-duplicates its accept/reject rule
