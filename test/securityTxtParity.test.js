@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { findTags } from "../tools/shared/html-tags.mjs";
-import { parseSecurityTxt } from "../tools/security-txt.mjs";
+import { parseSecurityTxt } from "../tools/shared/security-txt.mjs";
 
 // The edit-driven half of the security.txt checks, and the only half in the
 // gate: every assertion here fails because someone changed a file. The
