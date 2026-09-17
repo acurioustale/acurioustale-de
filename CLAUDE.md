@@ -302,7 +302,12 @@ a `tools/` helper with a test of its own: `shared/html-tags.mjs`
 plus the two-policy comparison), `shared/htaccess-csp.mjs`
 (`shared/htaccessCsp.test.js`, Apache line
 continuations, comments, request scopes, last-wins, and matching only the
-enforced `Content-Security-Policy` — never `-Report-Only`), `css-tokens.mjs`
+enforced `Content-Security-Policy` — never `-Report-Only`),
+`shared/og-dimensions.mjs` (`shared/ogDimensions.test.js`, the share card the
+markup declares — its path out of the `og:image` URL, its size out of the
+`og:image:width`/`og:image:height` metas with a missing tag told apart from an
+unreadable value, and the PNG IHDR header the file answers with),
+`css-tokens.mjs`
 (`test/cssTokens.test.js`, the `light-dark()` palette the theme-colour,
 manifest and fallback tests bind to) `overrides.mjs`
 (`test/overrides.test.js`, what a manifest looks like with one `overrides` entry
@@ -320,12 +325,13 @@ it.
 
 ### The mirrored `tools/shared/` bundle
 
-The first five of those helpers — `html-tags.mjs`, `html-comments.mjs`,
-`inline-scripts.mjs`, `csp-directives.mjs`, `htaccess-csp.mjs` — live in
+The first six of those helpers — `html-tags.mjs`, `html-comments.mjs`,
+`inline-scripts.mjs`, `csp-directives.mjs`, `htaccess-csp.mjs`,
+`og-dimensions.mjs` — live in
 `tools/shared/` and are duplicated **byte-for-byte** in the sibling repo
 [acurioustale/comparebuilds-app](https://github.com/acurioustale/comparebuilds-app).
-Both repos validate the same kind of markup and the same `.htaccess` CSP with the
-same guards, and neither wants a private copy of a regex that has already been
+Both repos validate the same kind of markup, the same `.htaccess` CSP and the
+same Open Graph card with the same guards, and neither wants a private copy of a regex that has already been
 got wrong once. This is deliberately not a package: no publish step, no version
 to bump, no dependency for a site that ships none — a vendored bundle plus an
 alarm.
