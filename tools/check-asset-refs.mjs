@@ -21,7 +21,7 @@
 import { readFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { findTags } from "./html-tags.mjs";
+import { findTags } from "./shared/html-tags.mjs";
 import {
   cssRefs,
   declaredOrigins,

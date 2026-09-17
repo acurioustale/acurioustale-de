@@ -36,6 +36,8 @@ npm run check:og              # og-image guard: the file matches the og: metas i
 npm run check:asset-refs      # every referenced local asset exists as a tracked file
 npm run check:deploy-assets   # DEPLOY_ASSETS covers the tracked deploy set
 npm run check:stale-overrides # which `overrides` pins still raise the floor (report-only, hits the registry)
+npm run check:shared          # the mirrored tools/shared/ bundle matches MANIFEST.sha256
+npm run shared:hash           # regenerate that manifest after an intended bundle edit
 ./validate.sh                 # run the FULL gate locally: format, lint, tests+coverage, the four guards, shell, workflows, xml, svg
 ./validate.sh --clean         # run with a clean install (npm ci) first, matching CI exactly
 ./deploy.sh                   # deploy to production by hand (uses your own SSH access)
@@ -195,7 +197,7 @@ dropping a meta can't silently break the toggle's chrome-tint sync (the guarded
 per-meta lookup would otherwise just skip that meta's update).
 `test/themeGuard.test.js` verifies the inline pre-paint guard stays consistent
 with the module-based `normalizeMode()` by extracting and evaluating the inline
-scripts (via `tools/inline-scripts.mjs`).
+scripts (via `tools/shared/inline-scripts.mjs`).
 
 ## JavaScript layout and the CSP
 
@@ -273,10 +275,10 @@ CSP can't express — while the meta is the baseline the python dev server appli
   `.htaccess`**, re-run. New external scripts under `js/` need no hash (covered by
   `'self'`); a `<script>` of a non-JS type like `application/ld+json` is data, not
   executed, and needs none either. The inline-script extraction logic in
-  `check-csp.mjs` is shared in `tools/inline-scripts.mjs` (also used by
+  `check-csp.mjs` is shared in `tools/shared/inline-scripts.mjs` (also used by
   `test/themeGuard.test.js`), which — like the `<meta>` reads in the CSP and
   og-image guards (via `findTags`) — is built on the shared HTML tag/attribute
-  parser in `tools/html-tags.mjs`, so quote-aware tag matching, comment-skipping
+  parser in `tools/shared/html-tags.mjs`, so quote-aware tag matching, comment-skipping
   and attribute parsing live in one place, not a private regex per guard.
 - The other security headers (`Strict-Transport-Security`,
   `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
@@ -292,12 +294,13 @@ CSP can't express — while the meta is the baseline the python dev server appli
   path prefix already covers it — no server-side change needed.
 
 That split is the rule, not a one-off. Every parsing rule a guard needs lives in
-a `tools/` helper with a test of its own: `html-tags.mjs`
-(`test/htmlTags.test.js`), `html-comments.mjs` (`test/htmlComments.test.js`,
-the commented-out-tag skip), `inline-scripts.mjs`
-(`test/inlineScripts.test.js`), `csp-directives.mjs`
-(`test/cspDirectives.test.js`, first-wins parsing plus the two-policy
-comparison), `htaccess-csp.mjs` (`test/htaccessCsp.test.js`, Apache line
+a `tools/` helper with a test of its own: `shared/html-tags.mjs`
+(`shared/htmlTags.test.js`), `shared/html-comments.mjs`
+(`shared/htmlComments.test.js`, the commented-out-tag skip),
+`shared/inline-scripts.mjs` (`shared/inlineScripts.test.js`),
+`shared/csp-directives.mjs` (`shared/cspDirectives.test.js`, first-wins parsing
+plus the two-policy comparison), `shared/htaccess-csp.mjs`
+(`shared/htaccessCsp.test.js`, Apache line
 continuations, comments, request scopes, last-wins, and matching only the
 enforced `Content-Security-Policy` — never `-Report-Only`), `css-tokens.mjs`
 (`test/cssTokens.test.js`, the `light-dark()` palette the theme-colour,
@@ -314,6 +317,59 @@ test — never a private regex inside the guard. The repo's most common gate
 failure by far is a guard regex that was subtly wrong on real input (see
 PRs #248, #254, #259, #270 and #271), and it is the helper's test that catches
 it.
+
+### The mirrored `tools/shared/` bundle
+
+The first five of those helpers — `html-tags.mjs`, `html-comments.mjs`,
+`inline-scripts.mjs`, `csp-directives.mjs`, `htaccess-csp.mjs` — live in
+`tools/shared/` and are duplicated **byte-for-byte** in the sibling repo
+[acurioustale/comparebuilds-app](https://github.com/acurioustale/comparebuilds-app).
+Both repos validate the same kind of markup and the same `.htaccess` CSP with the
+same guards, and neither wants a private copy of a regex that has already been
+got wrong once. This is deliberately not a package: no publish step, no version
+to bump, no dependency for a site that ships none — a vendored bundle plus an
+alarm.
+
+The bundle's own tests live in `tools/shared/` beside the helpers, **not** in
+`test/`. That is a deliberate exception to the "all tests live in `test/`"
+convention, and the only reason for it is that the bundle must be byte-identical
+across two repos that put their tests in different places — a test importing
+`../tools/shared/html-tags.mjs` could not be. Beside the helper, `./html-tags.mjs`
+resolves in both. `node --test` discovers them recursively, so nothing about the
+test or coverage scripts needed to change except one exclusion: `npm run
+coverage` excludes `tools/shared/**/*.test.js`, or the bundle's tests would be
+counted as gated source. The five helpers themselves stay squarely inside the
+coverage gate, at 100%, where they belong.
+
+What may go in follows from the same constraint. Everything in the bundle —
+helpers and tests alike — depends on the Node standard library and nothing else:
+`node:test` and `node:assert/strict`, no test framework. The two repos do not run
+the same test runner, so a file reaching for one stops being mirrorable the
+moment it is written. A helper that needs more than the stdlib does not belong
+here; keep it in `tools/` on this side and let the other repo have its own.
+
+Two alarms watch the bundle, because one repo's gate cannot see the other:
+
+- **Locally, on the gate.** `tools/shared/MANIFEST.sha256` pins every file in the
+  bundle (`<sha256>  <filename>`, sorted), and `npm run check:shared`
+  (`tools/check-shared.mjs`, run from `validate.sh` and deploy.yml) fails if the
+  set of files or any hash differs. So editing a shared helper without
+  consciously re-hashing breaks the build, and the failure message is where you
+  are told to mirror the change. Regenerate with `npm run shared:hash` after an
+  intended edit; it is a no-op on a clean tree.
+- **Across repos, weekly.** `.github/workflows/shared-sync.yml` shallow-sparse-
+  clones the sibling's `tools/shared/` and diffs the two bundles, on a weekly
+  cron, on `workflow_dispatch`, and on any push to `main` that touches the
+  bundle. It is **non-gating**, like `links`, `audit` and `e2e`: a sibling that
+  has not yet mirrored a change must never block a release here, so a red run is
+  a signal to go mirror it. The clone needs a fine-grained read-only PAT in the
+  `SHARED_SYNC_TOKEN` secret while the sibling is private; with the secret
+  absent the job skips with a notice rather than failing on a confusing clone
+  error.
+
+The rule the whole arrangement exists to enforce: **a fix to any shared helper
+has to land in BOTH repos.** The manifest makes you notice you touched one; the
+weekly diff makes you notice you only did it once.
 
 Neither the python dev server nor the gate exercises the `.htaccess` **rewrite**
 rules (the HTTPS-redirect / X-Forwarded-Proto trust logic), and curl against the

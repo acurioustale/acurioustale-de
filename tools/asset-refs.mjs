@@ -12,7 +12,7 @@
 //
 // Dependency-free on purpose: the shared HTML scanner plus small scans over our
 // own well-formed markup and CSS, not a general parser.
-import { findTags } from "./html-tags.mjs";
+import { findTags } from "./shared/html-tags.mjs";
 
 // The origins that are "us": the site's own, taken from the markup so nothing
 // hardcodes the hostname. <link rel="canonical"> and og:url both carry it; a

@@ -1,11 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  parseCsp,
-  directiveDiff,
-  comparePolicies,
-} from "../tools/csp-directives.mjs";
+import { parseCsp, directiveDiff, comparePolicies } from "./csp-directives.mjs";
 
 // --- parseCsp ---------------------------------------------------------------
 

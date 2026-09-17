@@ -15,13 +15,15 @@
     "links": "lychee --config lychee.toml index.html README.md CLAUDE.md SECURITY.md .well-known/security.txt",
     "validate": "./validate.sh",
     "test": "node --test",
-    "coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-coverage-exclude='js/terminal.js' --test-coverage-exclude='js/theme-toggle.js' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
+    "coverage": "node --test --experimental-test-coverage --test-coverage-exclude='test/**' --test-coverage-exclude='tools/shared/**/*.test.js' --test-coverage-exclude='js/terminal.js' --test-coverage-exclude='js/theme-toggle.js' --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100",
     "test:e2e": "playwright test",
     "check:csp": "node tools/check-csp.mjs",
     "check:og": "node tools/check-og-image.mjs",
     "check:asset-refs": "node tools/check-asset-refs.mjs",
     "check:deploy-assets": "node tools/check-deploy-assets.mjs",
-    "check:stale-overrides": "node tools/check-stale-overrides.mjs"
+    "check:stale-overrides": "node tools/check-stale-overrides.mjs",
+    "check:shared": "node tools/check-shared.mjs",
+    "shared:hash": "node tools/check-shared.mjs --write"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

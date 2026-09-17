@@ -271,6 +271,9 @@ npm run --silent check:asset-refs
 step "Checking DEPLOY_ASSETS covers the tracked deploy set"
 npm run --silent check:deploy-assets
 
+step "Checking the mirrored tools/shared bundle matches its manifest"
+npm run --silent check:shared
+
 step "Checking SVG optimisation (svgo)"
 # Run svgo into a temp file so a svgo crash (bad fetch, config error) is
 # distinguished from a genuinely unoptimised SVG, instead of pipefail turning

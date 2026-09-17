@@ -1,9 +1,10 @@
-// Shared inline-<script> extractor. The CSP guard (tools/check-csp.mjs) and the
-// theme-guard test (test/themeGuard.test.js) both pull the inline scripts out of
-// index.html, and must agree on exactly which scripts exist — so the selection
-// lives here once instead of being copy-pasted into both.
+// Shared inline-<script> extractor. Anything that hashes or inspects the inline
+// scripts of a page must agree with every other caller on exactly which scripts
+// exist — one script missed from the enumeration ships unhashed and slips past a
+// CSP check. So the selection lives here, as a tested unit, instead of as a
+// private regex in each caller.
 //
-// Built on the shared scanner in tools/html-tags.mjs: it finds the <script>
+// Built on the shared scanner in ./html-tags.mjs: it finds the <script>
 // elements (quote-aware, tolerating close-tag junk) and parses each one's
 // attributes, so the fiddly tag/attribute rules live in one place.
 import { rawTextElements } from "./html-tags.mjs";

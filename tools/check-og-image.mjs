@@ -9,7 +9,7 @@
 // This does NOT catch content drift (editing og-image.src.svg without
 // re-rendering the PNG) — that stays a manual step, see the README.
 import { open, readFile } from "node:fs/promises";
-import { findTags } from "./html-tags.mjs";
+import { findTags } from "./shared/html-tags.mjs";
 
 const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
 

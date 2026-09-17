@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isCommented } from "../tools/html-comments.mjs";
+import { isCommented } from "./html-comments.mjs";
 
 // The index of the `X` marker in each fixture, so the assertions read by intent.
 const at = (html) => html.indexOf("X");

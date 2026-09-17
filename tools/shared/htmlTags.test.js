@@ -7,7 +7,7 @@ import {
   findTags,
   rawTextElements,
   countRawTextOpeners,
-} from "../tools/html-tags.mjs";
+} from "./html-tags.mjs";
 
 // --- parseAttrs -------------------------------------------------------------
 
