@@ -1,6 +1,6 @@
 # Machine-readable security contact for acurioustale.de (RFC 9116).
 # The prose policy this points at is SECURITY.md in the repository; keep the
-# contact address here and the one there the same — test/securityTxt.test.js
+# contact address here and the one there the same — test/securityTxtParity.test.js
 # binds them so they can't drift apart.
 
 Contact: mailto:me@acurioustale.de

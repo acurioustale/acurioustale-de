@@ -1,20 +1,25 @@
 name: links
 
-# Link checking is intentionally separate from deploy: external hosts have
-# transient outages, so a broken link should surface on pull requests and a
-# weekly schedule without ever blocking a production deploy.
-# On pull requests, only run when a file lychee actually checks (or its config)
-# changes, so unrelated PRs don't hit external hosts. The weekly schedule still
-# catches links that rot without a file change, and workflow_dispatch runs it by
-# hand; neither is path-filtered.
+# Two non-gating checks over the same published surfaces, sharing one workflow
+# because they share one schedule and one reason to live outside the gate: both
+# fail on someone else's clock rather than on a change. The deploy workflow's
+# `validate` gate is what blocks a release, so a dead external link, a momentary
+# rate-limit, or a security.txt lapsing on its own date surfaces here without
+# ever blocking deploy. The weekly schedule catches link rot and the approaching
+# expiry; the PR trigger catches either broken by a change.
 on:
   pull_request:
+    # Only the files these steps actually read (plus their config and this
+    # workflow), so unrelated PRs don't hit external hosts. The weekly schedule
+    # still catches rot in everything on a cadence.
     paths:
       - index.html
       - README.md
       - CLAUDE.md
       - SECURITY.md
       - .well-known/security.txt
+      - tools/check-security-txt-expiry.mjs
+      - tools/security-txt.mjs
       - lychee.toml
       - .github/workflows/links.yml
   schedule:
@@ -30,6 +35,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      # No `cache: npm` and no install: the guard is dependency-free, so the job
+      # never builds a node_modules tree to cache.
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: ".tool-versions"
+
+      # Before the link check, not after: this step needs no network and cannot
+      # flake, so running it first means a rate-limited external host can never
+      # skip it and hide an expired security contact.
+      - name: security.txt expiry
+        run: npm run check:security-txt
 
       - name: Check links (lychee)
         uses: lycheeverse/lychee-action@v2

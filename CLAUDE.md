@@ -15,11 +15,34 @@ loaded with `type="module"` — no bundling.
 
 Reporting contacts are stated twice on purpose: `SECURITY.md` is the prose
 policy, `.well-known/security.txt` the RFC 9116 machine-readable half that a
-scanner or a researcher's tooling finds on the deployed site.
-`test/securityTxt.test.js` binds the two — the address there must be the one
-`SECURITY.md` gives, the `Canonical` URL must sit on the origin `index.html`
-declares canonical, and the `Expires` date must still be in the future, since an
-expired file is invalid per the RFC. Renewing it is a one-line edit.
+scanner or a researcher's tooling finds on the deployed site. Checking that file
+is split in two along what can break it. **Edit-driven, and the only half in the
+gate:** `test/securityTxtParity.test.js` binds the two surfaces — the address
+there must be the one `SECURITY.md` gives, the `Canonical` URL must sit on the
+origin `index.html` declares canonical, the fields the RFC requires must be
+present. Only a change to one of those files can fail it. **Calendar-driven, and
+deliberately not in the gate:** whether the `Expires` date has passed is
+`tools/check-security-txt-expiry.mjs` (`npm run check:security-txt`), run from
+the non-gating `links` workflow, which already reads this file. An expired file
+is invalid per the RFC, so the lapse is real — but it arrives on a date rather
+than on a change, and the same rule that keeps `npm audit` off the gate applies
+with more force to a deadline we set ourselves: it must not be able to redden a
+green tree and block an unrelated deploy on a day nobody touched the security
+contact. The guard exits 0 while the file is valid, exits 0 _with a notice_ for
+the last 60 days, and exits 1 only once it has lapsed — a warning that fails is
+just a failure with extra steps. Renewing is a one-line edit, and a human one:
+re-confirm the contacts still hold, then set a new date.
+
+The RFC 9116 field parsing both halves need is `tools/security-txt.mjs`
+(`parseSecurityTxt`, `expiryStatus`), tested in `test/securityTxt.test.js` — a
+helper with a test, per the rule below, not a regex written twice. It is not in
+the mirrored `tools/shared/` bundle even though the sibling repo publishes a
+security.txt too: the bundle's entry condition is byte-for-byte identity of
+helper _and_ test, and the sibling's test for this one is written for vitest,
+which the bundle's stdlib-only rule excludes. Both repos keep their own copy in
+`tools/`, which at least keeps the two layouts symmetric. Should the sibling ever
+move its test to `node:test`, promoting this helper into the bundle is the
+obvious follow-up.
 
 ## Commands
 
@@ -35,6 +58,7 @@ npm run check:csp             # CSP guard: inline-script hashes, and meta/.htacc
 npm run check:og              # og-image guard: the file matches the og: metas it advertises
 npm run check:asset-refs      # every referenced local asset exists as a tracked file
 npm run check:deploy-assets   # DEPLOY_ASSETS covers the tracked deploy set
+npm run check:security-txt    # security.txt Expires: warns in the last 60 days, fails once lapsed (non-gating)
 npm run check:stale-overrides # which `overrides` pins still raise the floor (report-only, hits the registry)
 npm run check:shared          # the mirrored tools/shared/ bundle matches MANIFEST.sha256
 npm run shared:hash           # regenerate that manifest after an intended bundle edit
@@ -72,7 +96,8 @@ a notice — CI still enforces it), so it runs on a fresh checkout; Node and npm
 are the only hard requirements.
 
 Link checking, browser smoke tests and dependency advisories are separate and
-non-gating: the `links` workflow runs lychee on PRs and weekly; the `e2e`
+non-gating: the `links` workflow runs lychee and the security.txt expiry guard
+on PRs and weekly; the `e2e`
 workflow runs the Playwright specs (a browser download) on PRs and pushes to
 `main`; the `audit` workflow runs `npm audit` on PRs that change the dependency
 tree and weekly. Deploys gate only on `validate`.
