@@ -94,7 +94,7 @@ markdownlint-cli2, Prettier, `vnu-jar` (the Nu Html Checker jar), svgo, jsdom (D
 harness for wiring tests), `fast-check` (property tests), `@playwright/test`
 (browser smoke tests). CI guards
 use only Node's stdlib; pure-logic unit tests also use `fast-check`
-(`test/properties.test.js`); only the DOM-wiring tests
+(the `*.property.test.js` files); only the DOM-wiring tests
 (`test/terminalDom.test.js`, `test/themeToggleDom.test.js`, via
 `test/helpers/dom.js`) need jsdom; only `e2e/` specs need Playwright; the site
 still ships no dependencies.
@@ -237,11 +237,24 @@ cap, history-recall arithmetic, width-change re-freeze guard lifted from the eve
 handlers) — exercised by `test/theme.test.js`, `test/commands.test.js`,
 `test/terminalUi.test.js`, `test/themeColor.test.js`, `test/manifestColor.test.js`,
 `test/themeFallback.test.js`, `test/themeGuard.test.js`. On top of those,
-`test/properties.test.js` asserts invariants across the whole input space with
-`fast-check` — `nextTheme` is a closed three-way cycle, `formatUptime` never goes
-negative and round-trips to elapsed minutes, `recallHistory` keeps its index in
-bounds for any key sequence, `capLimit` stays a non-negative bound — so a
-regression past a hand-picked example still fails the build.
+each of those three modules carries a `fast-check` property test beside its
+example test — `test/theme.property.test.js`,
+`test/commands.property.test.js`, `test/terminalUi.property.test.js` — asserting
+invariants across the whole input space, so a regression past a hand-picked
+example still fails the build. Property tests are first-class siblings of the
+example tests, one file per module (`<module>.property.test.js`), not one omnibus
+file: an invariant lands next to the module it constrains, so adding a pure
+function means asking what invariant it has, not appending to a shared pile.
+The invariants held today: `nextTheme` is a closed three-way cycle whose first
+step off auto always flips the colour, `normalizeMode` is total onto the three
+modes, `metaMediaFor` applies exactly one forced meta; `formatUptime` never goes
+negative and round-trips to elapsed minutes, `reply` depends only on its tokens
+and never on the whitespace between them, `blockFor` answers a static block or
+nothing and strips trailing slashes only after an `ls` operand; `recallHistory` keeps its
+index in bounds for any key sequence, `capLimit` stays a non-negative bound,
+`shouldRefit` is exactly a width-change predicate. `help()` is a fixed listing
+already bound to its table by example tests, so it carries no property of its
+own — do not invent a weak invariant to fill the grid.
 
 The DOM glue in the two UI modules is thin, but the wiring (a click, keystroke or
 storage event mutating the DOM) is covered by jsdom tests in
