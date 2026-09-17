@@ -362,10 +362,13 @@ Two alarms watch the bundle, because one repo's gate cannot see the other:
   cron, on `workflow_dispatch`, and on any push to `main` that touches the
   bundle. It is **non-gating**, like `links`, `audit` and `e2e`: a sibling that
   has not yet mirrored a change must never block a release here, so a red run is
-  a signal to go mirror it. The clone needs a fine-grained read-only PAT in the
-  `SHARED_SYNC_TOKEN` secret while the sibling is private; with the secret
-  absent the job skips with a notice rather than failing on a confusing clone
-  error.
+  a signal to go mirror it. The clone is unauthenticated, because both repos are
+  public; it is never gated on a credential existing, since that would leave the
+  job skipping green against a repo it can already read — the quiet failure the
+  workflow exists to prevent. Should either repo go private, a fine-grained
+  read-only PAT in a `SHARED_SYNC_TOKEN` secret is picked up automatically: the
+  clone is attempted either way, a failure without a token reports what is
+  missing, and a failure with one set is a hard error rather than a skip.
 
 The rule the whole arrangement exists to enforce: **a fix to any shared helper
 has to land in BOTH repos.** The manifest makes you notice you touched one; the
