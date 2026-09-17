@@ -21,6 +21,7 @@
     "check:og": "node tools/check-og-image.mjs",
     "check:asset-refs": "node tools/check-asset-refs.mjs",
     "check:deploy-assets": "node tools/check-deploy-assets.mjs",
+    "check:security-txt": "node tools/check-security-txt-expiry.mjs",
     "check:stale-overrides": "node tools/check-stale-overrides.mjs",
     "check:shared": "node tools/check-shared.mjs",
     "shared:hash": "node tools/check-shared.mjs --write"
