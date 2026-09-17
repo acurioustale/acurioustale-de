@@ -112,17 +112,32 @@ trusting the machine or the runner image (CI caches that directory, keyed on
 has to fall back to (hard error). Node is the one pin `validate.sh` cannot fetch
 for you, so it gets two bars: a wrong major is a hard error, since the JS half of
 the gate would then prove nothing about CI, while a minor/patch difference is a
-note (the gate still runs; `mise install node` applies the pin). Adding a tool to the gate means picking one of those two
-authorities, not both. `.claude/launch.json` defines a "site" launch config on
-port 4174.
+note (the gate still runs; `mise install node` applies the pin). Adding a tool to
+the gate means picking one of those two authorities, not both.
+`.claude/launch.json` defines a "site" launch config on port 4174.
+
+There is deliberately **no `.mise.toml`**, and its absence is a decision rather
+than an omission. The sibling repo carries one solely to stop mise reaching for
+pins it must not supply — a language runtime that comes from Homebrew, and phars
+that are not tools any version manager installs — because left enabled mise
+either warns on every command or starts building the runtime from source. Every
+pin here is a tool mise does have, so there is nothing to disable and `mise
+install` in this directory is a no-op once they are present. What mise provides
+is convenience (editor integration, `PATH`), never the gate's authority:
+`validate.sh` and deploy.yml fetch their own pinned copies of the three
+downloadable tools regardless, and neither reads anything but `.tool-versions`.
+Adding a pin mise cannot install is the one thing that would call for that file.
 
 Only one of those two authorities updates itself. `.github/dependabot.yml` opens
 weekly version-update PRs for the npm tree and the workflow actions (security
 updates run from the repo's security settings, with or without that file), so
 `package-lock.json` moves on its own. `.tool-versions` does not: nothing watches
 those upstreams, and a system tool drifts only when a local install wanders off
-the pin — which `validate.sh` then reports as a hard error while CI, fetching the
-pinned binary, stays green. Bumping a system pin is a hand-edit, and the version
+the pin. How `validate.sh` reports that differs by tool: for the three it
+fetches, a stray local copy is consulted only when the download is unavailable,
+and the pin assertion against it is a hard error; for Node, which it cannot
+fetch, a wrong major is a hard error and a smaller difference a note. CI,
+fetching the pinned binary, stays green either way. Bumping a system pin is a hand-edit, and the version
 it names is the one CI downloads, so check the release publishes the asset
 deploy.yml fetches.
 
