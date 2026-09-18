@@ -187,8 +187,8 @@ Link checking runs separately (see Development) so flaky external hosts never
 block a deploy.
 
 `deploy.sh` extracts the deploy set — `index.html`, `.htaccess`, `robots.txt`,
-`sitemap.xml`, `humans.txt`, `manifest.webmanifest`, `css/`, `js/` and
-`assets/` — from `HEAD` with `git archive` into a temporary
+`sitemap.xml`, `humans.txt`, `manifest.webmanifest`, `.well-known/`, `css/`,
+`js/` and `assets/` — from `HEAD` with `git archive` into a temporary
 staging directory, so a hand-run deploy ships the commit rather than whatever the
 working tree happens to hold. It then stamps the current Unix-millisecond time into `LAST_DEPLOY` in
 the staged `js/commands.js` (so the terminal's `uptime` counts from the live
@@ -224,9 +224,13 @@ The `--delete` flag makes `html/acurioustale.de/` an exact mirror of the staged
 deploy set. Because the staging directory holds only the files listed above,
 rsync removes anything else it finds in the target on the host — both files
 dropped from the set locally and any file placed there out of band. Keep the
-deploy target to the site alone: a file hand-placed in it (an ACME challenge, a
-search-console verification file) is deleted on the next deploy unless it's
-added to the deploy set.
+deploy target to the site alone: a file hand-placed in it (a search-console
+verification file, say) is deleted on the next deploy unless it's added to the
+deploy set. The one exception is `.well-known/`, which is shared with the host:
+a pair of `protect` filters in `deploy.sh` keeps `--delete` away from it and
+everything under it, so the ACME challenge files a cert renewal drops there
+survive a deploy. Our own `.well-known/security.txt` still ships and updates
+normally — `protect` only governs deletion.
 
 Two invariants tie the deploy to the jail. First, `deploy.sh` must stage the
 full deploy set (the `DEPLOY_ASSETS` array): a file added to the site but left

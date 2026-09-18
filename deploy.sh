@@ -105,16 +105,29 @@ rsync_excludes=(
 
 # The staged tree is the whole source, so --delete mirrors it exactly and prunes
 # everything else in the web root. That is what we want for anything the repo
-# owns, but the host — not this repo — owns the web root's `.well-known/`
-# directory: ACME (Let's Encrypt) challenge files and a hand-placed security.txt
-# live there. Without a guard, the next deploy would delete them. A `protect`
-# filter keeps --delete from pruning `.well-known/` while still leaving the rest
-# of the root a faithful mirror. It is a delete-time filter only (the dir is not
-# in the staged source, so nothing is sent), and like the excludes above it is a
-# client-side rule that never reaches the server-side rsync command the deploy
-# key's forced jail vets. Anchored with a leading slash to the transfer root, so
-# only the web root's own `.well-known/` is protected, not a nested one.
-rsync_protect=(--filter='protect /.well-known/')
+# owns, but `.well-known/` is shared: we ship security.txt into it, while the
+# HOST owns the ACME (Let's Encrypt) challenge files that appear there during a
+# cert renewal. Without a guard the next deploy deletes them — a latent
+# cert-renewal break. `protect` is a delete-time filter only, so our own
+# security.txt still transfers and updates normally.
+#
+# TWO rules, not one. A bare `protect /.well-known/` (enough for a host-owned
+# directory that is absent from the deploy set, which is what this was when it
+# was written) does NOT cover ours: because we ship a file inside it, the
+# directory is part of the transfer, so rsync descends into it and deletes
+# extraneous entries there — acme-challenge/ included. `/.well-known/**`
+# protects the entries under it; the directory rule is kept alongside so the
+# directory itself also survives should we ever stop shipping security.txt. Both
+# are anchored with a leading slash to the transfer root, so only the web root's
+# own `.well-known/` is meant, not a nested one.
+#
+# Like the excludes above, these are client-side rules: they never appear in the
+# server-side rsync command the deploy key's forced jail vets, so no jail change
+# is needed.
+rsync_protect=(
+	--filter='protect /.well-known/'
+	--filter='protect /.well-known/**'
+)
 
 # One invocation for both the dry-run and real deploys so their flags and
 # endpoints can't drift. ${rsync_args[@]+"..."} expands to nothing when the
