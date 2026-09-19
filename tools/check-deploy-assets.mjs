@@ -18,6 +18,8 @@ import { readFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { countPathsIgnoreBlocks, parsePathsIgnore } from "./workflow-paths.mjs";
+
 const root = new URL("../", import.meta.url);
 
 const deploySh = await readFile(new URL("deploy.sh", root), "utf8");
@@ -171,35 +173,20 @@ const workflow = await readFile(
 );
 
 // Exactly one `paths-ignore:` block is expected (under on.push). More than one
-// means the layout changed and this single-block read would cover only part of
-// it, so fail loudly rather than under-checking (like the DEPLOY_ASSETS
-// single-assignment guard above).
-const ignoreBlocks = workflow.match(/^\s*paths-ignore:\s*$/gm) ?? [];
-if (ignoreBlocks.length !== 1) {
+// means the layout changed and parsePathsIgnore's single-block read would cover
+// only part of it, so fail loudly rather than under-checking (like the
+// DEPLOY_ASSETS single-assignment guard above).
+const ignoreBlockCount = countPathsIgnoreBlocks(workflow);
+if (ignoreBlockCount !== 1) {
   console.error(
     "check-deploy-assets: expected exactly one `paths-ignore:` block in\n" +
-      `  .github/workflows/deploy.yml, found ${ignoreBlocks.length}. Extend the\n` +
+      `  .github/workflows/deploy.yml, found ${ignoreBlockCount}. Extend the\n` +
       "  parser to read them all before trusting this check.",
   );
   process.exit(1);
 }
 
-// The list items following `paths-ignore:` — each `- "<glob>"` line, quotes
-// stripped — up to the first line that is not a list item (the next YAML key).
-// Comment lines inside the block are skipped.
-const ignorePatterns = [];
-let inIgnoreBlock = false;
-for (const line of workflow.split("\n")) {
-  if (/^\s*paths-ignore:\s*$/.test(line)) {
-    inIgnoreBlock = true;
-    continue;
-  }
-  if (!inIgnoreBlock) continue;
-  if (/^\s*#/.test(line)) continue; // a comment inside the block
-  const item = line.match(/^\s*-\s*(.+?)\s*$/);
-  if (!item) break; // first non-item line ends the block
-  ignorePatterns.push(item[1].replace(/^["']|["']$/g, ""));
-}
+const ignorePatterns = parsePathsIgnore(workflow);
 
 // Translate a paths-ignore glob to a predicate over a repo-relative path, for the
 // three shapes this workflow uses: a trailing `/**` directory prefix, a leading

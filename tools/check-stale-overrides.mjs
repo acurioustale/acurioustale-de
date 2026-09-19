@@ -27,7 +27,11 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { withoutOverride, report } from "./shared/overrides.mjs";
+import {
+  withoutOverride,
+  report,
+  isAdvisoryFailure,
+} from "./shared/overrides.mjs";
 
 const pkg = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
@@ -59,10 +63,11 @@ function auditWithout(name) {
     execFileSync("npm", ["audit"], { cwd: dir, stdio: "pipe" });
     return null;
   } catch (err) {
-    // A non-zero exit from `npm audit` means advisories, which is a result
-    // rather than a failure. Anything else (a resolution error, npm missing)
-    // is rethrown, so a broken check can never read as a clean one.
-    if (err.stdout) return err.stdout.toString();
+    // Advisories are a result rather than a failure; anything else (a
+    // resolution error, a registry outage, npm missing) is rethrown, so a
+    // broken check can never read as a verdict. Which is which is
+    // isAdvisoryFailure's call — see there for why both halves of it matter.
+    if (isAdvisoryFailure(err)) return err.stdout.toString();
     throw err;
   } finally {
     rmSync(dir, { recursive: true, force: true });
