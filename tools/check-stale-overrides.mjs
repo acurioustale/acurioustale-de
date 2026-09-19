@@ -59,10 +59,13 @@ function auditWithout(name) {
     execFileSync("npm", ["audit"], { cwd: dir, stdio: "pipe" });
     return null;
   } catch (err) {
-    // A non-zero exit from `npm audit` means advisories, which is a result
-    // rather than a failure. Anything else (a resolution error, npm missing)
-    // is rethrown, so a broken check can never read as a clean one.
-    if (err.stdout) return err.stdout.toString();
+    // Exit 1 from `npm audit` with a report on stdout means advisories, which
+    // is a result rather than a failure. Anything else (a resolution error, a
+    // registry outage, npm missing) is rethrown, so a broken check can never
+    // read as a verdict. Both halves of the test are load-bearing: a failure
+    // before the audit runs still exits 1, but leaves stdout empty, and under
+    // `stdio: "pipe"` an empty stdout is a zero-length Buffer, which is truthy.
+    if (err.status === 1 && err.stdout?.length) return err.stdout.toString();
     throw err;
   } finally {
     rmSync(dir, { recursive: true, force: true });
