@@ -186,7 +186,9 @@ if (ignoreBlocks.length !== 1) {
 
 // The list items following `paths-ignore:` — each `- "<glob>"` line, quotes
 // stripped — up to the first line that is not a list item (the next YAML key).
-// Comment lines inside the block are skipped.
+// Comment and blank lines inside the block are skipped: YAML allows both
+// between items, and treating a blank line as the end of the block would read a
+// truncated list, then report every entry below it as missing.
 const ignorePatterns = [];
 let inIgnoreBlock = false;
 for (const line of workflow.split("\n")) {
@@ -196,6 +198,7 @@ for (const line of workflow.split("\n")) {
   }
   if (!inIgnoreBlock) continue;
   if (/^\s*#/.test(line)) continue; // a comment inside the block
+  if (/^\s*$/.test(line)) continue; // a blank line between items
   const item = line.match(/^\s*-\s*(.+?)\s*$/);
   if (!item) break; // first non-item line ends the block
   ignorePatterns.push(item[1].replace(/^["']|["']$/g, ""));
