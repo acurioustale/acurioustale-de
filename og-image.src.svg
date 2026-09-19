@@ -23,7 +23,7 @@
   <path stroke="#5f5e5a" d="M470 300h570"/>
   <g font-size="23">
     <text x="470" y="348" fill="#5dcaa5">role</text>
-    <text x="640" y="348" fill="#d3d1c7">csa @ some kind of fruit company</text>
+    <text x="640" y="348" fill="#d3d1c7">rsa @ some kind of fruit company</text>
     <text x="470" y="388" fill="#5dcaa5">location</text>
     <text x="640" y="388" fill="#d3d1c7">cork, ireland</text>
     <text x="470" y="428" fill="#5dcaa5">email</text>
