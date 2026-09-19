@@ -19,15 +19,15 @@
     <text xml:space="preserve" x="150" y="338">| |\/| |\__ \</text>
     <text xml:space="preserve" x="150" y="372">|_|  |_||___/</text>
   </g>
-  <text x="470" y="278" fill="#9fe1cb" font-size="40">markus spitzner</text>
-  <path stroke="#5f5e5a" d="M470 300h570"/>
+  <text x="438" y="278" fill="#9fe1cb" font-size="40">markus spitzner</text>
+  <path stroke="#5f5e5a" d="M438 300h614"/>
   <g font-size="23">
-    <text x="470" y="348" fill="#5dcaa5">role</text>
-    <text x="640" y="348" fill="#d3d1c7">rsa @ some kind of fruit company</text>
-    <text x="470" y="388" fill="#5dcaa5">location</text>
-    <text x="640" y="388" fill="#d3d1c7">cork, ireland</text>
-    <text x="470" y="428" fill="#5dcaa5">email</text>
-    <text x="640" y="428" fill="#85b7eb">me@acurioustale.de</text>
+    <text x="438" y="348" fill="#5dcaa5">role</text>
+    <text x="608" y="348" fill="#d3d1c7">rsa @ some kind of fruit company</text>
+    <text x="438" y="388" fill="#5dcaa5">location</text>
+    <text x="608" y="388" fill="#d3d1c7">cork, ireland</text>
+    <text x="438" y="428" fill="#5dcaa5">email</text>
+    <text x="608" y="428" fill="#85b7eb">me@acurioustale.de</text>
   </g>
   <text x="150" y="498" fill="#5dcaa5" font-size="27">$</text>
   <path fill="#9fe1cb" d="M173 481h13v24h-13z"/>
