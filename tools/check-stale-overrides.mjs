@@ -27,7 +27,11 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { withoutOverride, report } from "./shared/overrides.mjs";
+import {
+  withoutOverride,
+  report,
+  isAdvisoryFailure,
+} from "./shared/overrides.mjs";
 
 const pkg = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
@@ -59,13 +63,11 @@ function auditWithout(name) {
     execFileSync("npm", ["audit"], { cwd: dir, stdio: "pipe" });
     return null;
   } catch (err) {
-    // Exit 1 from `npm audit` with a report on stdout means advisories, which
-    // is a result rather than a failure. Anything else (a resolution error, a
-    // registry outage, npm missing) is rethrown, so a broken check can never
-    // read as a verdict. Both halves of the test are load-bearing: a failure
-    // before the audit runs still exits 1, but leaves stdout empty, and under
-    // `stdio: "pipe"` an empty stdout is a zero-length Buffer, which is truthy.
-    if (err.status === 1 && err.stdout?.length) return err.stdout.toString();
+    // Advisories are a result rather than a failure; anything else (a
+    // resolution error, a registry outage, npm missing) is rethrown, so a
+    // broken check can never read as a verdict. Which is which is
+    // isAdvisoryFailure's call — see there for why both halves of it matter.
+    if (isAdvisoryFailure(err)) return err.stdout.toString();
     throw err;
   } finally {
     rmSync(dir, { recursive: true, force: true });

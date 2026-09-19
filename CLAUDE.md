@@ -374,14 +374,21 @@ unreadable value, and the PNG IHDR header the file answers with),
 (`shared/cssTokens.test.js`, the `light-dark()` palette the theme-colour,
 manifest and fallback tests bind to) `shared/overrides.mjs`
 (`shared/overrides.test.js`, what a manifest looks like with one `overrides`
-entry removed and how npm's audit verdict reads) and `shared/asset-refs.mjs`
+entry removed, and how npm's audit verdict reads — including which non-zero
+`npm audit` exit is an answer about the tree and which is a run that never
+audited it) and `shared/asset-refs.mjs`
 (`shared/assetRefs.test.js`, what counts as a local reference — the URL-carrying
 attributes incl. `srcset` lists, the share-image metas whose same-origin
 absolute URL an attribute-only scan misses, `url()` targets resolved against
 their stylesheet's directory, and the manifest lists) and
 `shared/security-txt.mjs` (`shared/securityTxt.test.js`, the RFC 9116 `Name:
 value` fields with a repeated name kept in file order, and what `Expires` says
-about the file's remaining life). `test/lastDeployStamp.test.js` and
+about the file's remaining life). Not every such helper is mirrorable:
+`workflow-paths.mjs` (`test/workflowPaths.test.js`, the `paths-ignore:` block
+deploy.yml binds its redeploy skip to — its items read past the comments and
+blank lines YAML allows between them, so a formatted list is not read
+truncated) reads this repo's own workflow layout, so it stays in `tools/` and
+`test/` rather than in the bundle. `test/lastDeployStamp.test.js` and
 `test/lastLoginStamp.test.js` do the same for `deploy.sh`'s two stamping
 regexes. When a guard needs to read something new, add it as a helper with a
 test — never a private regex inside the guard. The repo's most common gate
