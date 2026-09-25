@@ -149,6 +149,17 @@ test("htmlTags skips a tag inside an HTML comment", () => {
   assert.equal(tags[0].attrs.get("content"), "#live");
 });
 
+test("htmlTags keeps live tags after a <!-- inside an attribute value", () => {
+  // The literal in the description must not pair with the later comment's
+  // `-->` and hide the canonical link between them.
+  const html =
+    `<meta name="description" content="a <!-- b">` +
+    `<link rel="canonical" href="/">` +
+    `<!-- note -->`;
+  const tags = [...findTags(html, "link", { rel: "canonical" })];
+  assert.equal(tags.length, 1);
+});
+
 // --- findTags ---------------------------------------------------------------
 
 test("findTags narrows to tags matching every query pair, case-insensitively", () => {
