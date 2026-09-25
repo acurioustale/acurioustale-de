@@ -89,6 +89,16 @@ test("blockFor answers a static block or undefined for any line", () => {
   );
 });
 
+// A script run by its path ignores its arguments: any operands after
+// `./whoami.sh` still resolve to the whoami card, as the no-argument run does.
+test("blockFor runs ./whoami.sh whatever arguments follow it", () => {
+  fc.assert(
+    fc.property(fc.array(TOKEN, { maxLength: 5 }), (args) => {
+      assert.equal(blockFor(["./whoami.sh", ...args].join(" ")), ".whoami");
+    }),
+  );
+});
+
 // The trailing-slash rule is idempotent on the `ls ` listing form — one slash or
 // twenty name the same directory — and applies to no other form, where a slash
 // makes the operand a different (missing) path.

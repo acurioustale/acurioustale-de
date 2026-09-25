@@ -287,7 +287,7 @@ step off auto always flips the colour, `normalizeMode` is total onto the three
 modes, `metaMediaFor` applies exactly one forced meta; `formatUptime` never goes
 negative and round-trips to elapsed minutes, `reply` depends only on its tokens
 and never on the whitespace between them, `blockFor` answers a static block or
-nothing and strips trailing slashes only after an `ls` operand; `recallHistory` keeps its
+nothing and strips trailing slashes only after an `ls` operand, and runs `./whoami.sh` whatever arguments follow it; `recallHistory` keeps its
 index in bounds for any key sequence, `capLimit` stays a non-negative bound,
 `shouldRefit` is exactly a width-change predicate. `help()` is a fixed listing
 already bound to its table by example tests, so it carries no property of its

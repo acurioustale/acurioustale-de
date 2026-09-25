@@ -38,6 +38,10 @@ test("blockFor resolves the static blocks and tolerates a trailing slash only af
   assert.equal(blockFor("ls projects///"), ".projects");
   // A file with a trailing slash is an error, not a re-run.
   assert.equal(blockFor("./whoami.sh/"), undefined);
+  // A script ignores arguments it does not take, so it still runs.
+  assert.equal(blockFor("./whoami.sh foo"), ".whoami");
+  assert.equal(blockFor("./whoami.sh --help -v"), ".whoami");
+  assert.equal(blockFor("./whoami.sh/ foo"), undefined);
   // Non-block commands (including a bare ls and an unknown ls operand) don't match.
   assert.equal(blockFor("ls"), undefined);
   assert.equal(blockFor("ls nope"), undefined);
