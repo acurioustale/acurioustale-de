@@ -364,7 +364,8 @@ a `tools/` helper with a test of its own: `shared/html-tags.mjs`
 `shared/csp-directives.mjs` (`shared/cspDirectives.test.js`, first-wins parsing
 plus the two-policy comparison), `shared/htaccess-csp.mjs`
 (`shared/htaccessCsp.test.js`, Apache line
-continuations, comments, request scopes, last-wins, and matching only the
+continuations, comments, request scopes and the CSP lines inside them,
+last-wins, and matching only the
 enforced `Content-Security-Policy` — never `-Report-Only`),
 `shared/og-dimensions.mjs` (`shared/ogDimensions.test.js`, the share card the
 markup declares — its path out of the `og:image` URL, its size out of the
