@@ -45,10 +45,15 @@ export const DOM_COMMANDS = { clear: "clear", help: "help" };
 // layer: a trailing slash is meaningful only after a directory operand, so
 // `ls projects/` lists like `ls projects`, but `./whoami.sh/` is a file with a
 // slash appended — an error, not a re-run. Hence the slash is tolerated only for
-// the `ls ` listing form and every other block matches exactly. Object.hasOwn
-// keeps inherited member names (`constructor`, `toString`) from matching.
+// the `ls ` listing form. Every other block is a script run by its path, so it
+// matches on the command word alone: a script that takes no arguments ignores
+// any it is given, so `./whoami.sh foo` reprints the card rather than claiming
+// the file `ls` just listed does not exist. Object.hasOwn keeps inherited member
+// names (`constructor`, `toString`) from matching.
 export function blockFor(cmd) {
-  const key = cmd.startsWith("ls ") ? cmd.replace(/\/+$/, "") : cmd;
+  const key = cmd.startsWith("ls ")
+    ? cmd.replace(/\/+$/, "")
+    : cmd.split(" ")[0];
   return Object.hasOwn(STATIC_BLOCKS, key) ? STATIC_BLOCKS[key] : undefined;
 }
 
