@@ -75,3 +75,17 @@ test("isCommented is true for a tag inside a real comment", () => {
   const html = `<!-- <meta name="X"> --> <meta name="live">`;
   assert.equal(isCommented(html, html.indexOf("<meta")), true);
 });
+
+test("isCommented ends a comment where the tokenizer does, not only at -->", () => {
+  // `--!>` ends a comment, and `<!-->` and `<!--->` are empty comments that
+  // close at once, so the X after each is live markup.
+  for (const html of [
+    `<!-- a --!> X <!-- b -->`,
+    `<!--> X <!-- b -->`,
+    `<!---> X <!-- b -->`,
+  ]) {
+    assert.equal(isCommented(html, at(html)), false, html);
+  }
+  const html = `<!-- a --!> <!-- X --!>`;
+  assert.equal(isCommented(html, at(html)), true);
+});

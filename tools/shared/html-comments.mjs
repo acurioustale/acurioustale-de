@@ -8,10 +8,13 @@
 
 // At the current `<`, either a whole HTML comment or a whole tag (any name,
 // quotes balanced so an inner `>` doesn't end it early). Comments can't nest, so
-// the first `-->` closes each one, exactly as the browser tokenizer does — hence
-// the non-greedy body. Group 1 is a comment, group 2 a start tag's name.
+// the first comment end closes each one, exactly as the browser tokenizer does —
+// hence the non-greedy body. That end is `-->` or the erroneous `--!>`, and an
+// empty `<!-->` or `<!--->` closes at once: the tokenizer ends a comment on all
+// four, so a scan that knew only `-->` would read live markup after them as
+// still commented out. Group 1 is a comment, group 2 a start tag's name.
 const COMMENT_OR_TAG =
-  /(<!--[\s\S]*?-->)|<(?:\/[a-zA-Z]|([a-zA-Z][^\s/>]*))[^>"']*(?:(?:"[^"]*"|'[^']*')[^>"']*)*>/y;
+  /(<!--(?:-?>|[\s\S]*?--!?>))|<(?:\/[a-zA-Z]|([a-zA-Z][^\s/>]*))[^>"']*(?:(?:"[^"]*"|'[^']*')[^>"']*)*>/y;
 
 // Elements whose body is text, not markup: a `<!--` inside a script or a title
 // is a string, never a comment, so the scan jumps to the element's close tag.
