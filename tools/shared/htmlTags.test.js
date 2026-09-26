@@ -261,6 +261,15 @@ test("countRawTextOpeners ignores a <script literal inside an HTML comment", () 
   assert.equal(countRawTextOpeners(html, "script"), 1);
 });
 
+test("countRawTextOpeners ends a comment at --!> and at an empty <!-->", () => {
+  // Knowing only `-->`, the scan ran each comment on to the later one's close
+  // and stepped over the live script between them uncounted.
+  for (const open of [`<!-- a --!>`, `<!-->`, `<!--->`]) {
+    const html = `${open}<script>x()</script><!-- b -->`;
+    assert.equal(countRawTextOpeners(html, "script"), 1, open);
+  }
+});
+
 test("countRawTextOpeners still counts an unclosed opener with attributes", () => {
   // A start tag with no `>` (and so no `</script>`) forms no element but is a
   // real opener — the fail-closed divergence the CSP guard exists to catch.
