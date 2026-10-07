@@ -43,6 +43,6 @@
     "vnu-jar": "^26.9.30"
   },
   "overrides": {
-    "smol-toml": "^1.7.1"
+    "smol-toml": "^1.9.0"
   }
 }
