@@ -41,8 +41,5 @@
     "stylelint-config-standard": "^40.0.0",
     "svgo": "^4.0.1",
     "vnu-jar": "^26.10.12"
-  },
-  "overrides": {
-    "smol-toml": "^1.9.0"
   }
 }
