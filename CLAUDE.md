@@ -178,9 +178,12 @@ advisories land and as the linter's own dependencies catch up. Keep an override
 only while it is still doing that work: once the linter ships a patched version
 itself, the pin stops raising the floor and starts holding the tree below what
 the linter expects, which is a different thing than what it was added for.
-`npm run check:stale-overrides` is what answers that per pin — it resolves and
-audits the tree with each override removed in turn, so a clean result means
-upstream has caught up and the entry can go. It runs report-only in the `audit`
+`npm run check:stale-overrides` is what answers that per pin — it audits the
+current tree, then resolves and audits it with each override removed in turn,
+so a pin whose removal lets in no advisory the current tree does not already
+have is one upstream has caught up with, and the entry can go. Comparing
+against the current tree, not demanding a clean audit, keeps an unrelated
+advisory with no fix yet from making every pin look load-bearing. It runs report-only in the `audit`
 workflow, never on the gate. All
 of them are dev-only tooling linting our own files — no untrusted input.
 
@@ -375,9 +378,11 @@ unreadable value, and the PNG IHDR header the file answers with),
 (`shared/cssTokens.test.js`, the `light-dark()` palette the theme-colour,
 manifest and fallback tests bind to) `shared/overrides.mjs`
 (`shared/overrides.test.js`, what a manifest looks like with one `overrides`
-entry removed, and how npm's audit verdict reads — including which non-zero
+entry removed, how npm's `--json` audit reads — including which non-zero
 `npm audit` exit is an answer about the tree and which is a run that never
-audited it) and `shared/asset-refs.mjs`
+audited it, and refusing the JSON error report that exits 1 like a finding —
+and which advisories removing an override lets in that the current tree does
+not already have) and `shared/asset-refs.mjs`
 (`shared/assetRefs.test.js`, what counts as a local reference — the URL-carrying
 attributes incl. `srcset` lists, the share-image metas whose same-origin
 absolute URL an attribute-only scan misses, `url()` targets resolved against

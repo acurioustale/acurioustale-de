@@ -11,11 +11,14 @@
 //
 // How it decides, and why not a semver comparison: the question is not "does
 // this override change the resolved version". A stale pin very much does — that
-// is exactly how it holds a major back. The question is whether the tree is
-// still unsafe WITHOUT it. So for each override in turn, resolve a lockfile with
-// that single entry removed and audit it. A clean audit means upstream has
-// caught up and the entry can go; a dirty one names the advisory still keeping
-// it alive.
+// is exactly how it holds a major back. The question is whether removing it
+// lets in an advisory the tree is free of today. So resolve the current tree
+// once and audit it, then for each override in turn resolve a lockfile with that
+// single entry removed, audit that, and compare. Nothing new means upstream has
+// caught up and the entry can go; anything new is named as the advisory still
+// keeping it alive. Comparing against the current tree rather than demanding a
+// clean audit is what keeps an unrelated, unfixable advisory elsewhere in the
+// tree from making every pin look load-bearing.
 //
 // Reports only, and exits zero either way: a stale override is untidy, never
 // urgent. Run from the non-gating `audit` workflow, never from validate.sh or
@@ -29,6 +32,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   withoutOverride,
+  parseAudit,
+  introducedAdvisories,
   report,
   isAdvisoryFailure,
 } from "./shared/overrides.mjs";
@@ -43,38 +48,54 @@ if (names.length === 0) {
   process.exit(0);
 }
 
-// Resolve a lockfile for `pkg` minus one override and audit it. Returns null
-// when that tree is clean, or npm's audit output when it is not.
+// Resolve a lockfile for `manifest` and audit it, as parseAudit's Map of
+// advisories.
 //
 // --package-lock-only keeps this to a resolution plus a registry query: nothing
 // is installed and no node_modules is ever written. It runs in a temp directory
-// so the repo's own lockfile is never touched.
-function auditWithout(name) {
+// so the repo's own lockfile is never touched — and so the current tree is
+// resolved the same way as every trimmed one, rather than read from a lockfile
+// that may be older than a fresh resolution, which would show up as a
+// difference that has nothing to do with the override.
+function auditTree(manifest) {
   const dir = mkdtempSync(join(tmpdir(), "stale-override-"));
   try {
-    writeFileSync(
-      join(dir, "package.json"),
-      JSON.stringify(withoutOverride(pkg, name), null, 2),
-    );
+    writeFileSync(join(dir, "package.json"), JSON.stringify(manifest, null, 2));
     execFileSync("npm", ["install", "--package-lock-only", "--silent"], {
       cwd: dir,
       stdio: "ignore",
     });
-    execFileSync("npm", ["audit"], { cwd: dir, stdio: "pipe" });
-    return null;
-  } catch (err) {
-    // Advisories are a result rather than a failure; anything else (a
-    // resolution error, a registry outage, npm missing) is rethrown, so a
-    // broken check can never read as a verdict. Which is which is
-    // isAdvisoryFailure's call — see there for why both halves of it matter.
-    if (isAdvisoryFailure(err)) return err.stdout.toString();
-    throw err;
+    let stdout;
+    try {
+      stdout = execFileSync("npm", ["audit", "--json"], {
+        cwd: dir,
+        stdio: "pipe",
+      });
+    } catch (err) {
+      // Advisories are a result rather than a failure; anything else (a
+      // resolution error, a registry outage, npm missing) is rethrown, so a
+      // broken check can never read as a verdict. Which is which is
+      // isAdvisoryFailure's call, and parseAudit's for the `--json` error
+      // report that gets past it — see there for why both matter.
+      if (!isAdvisoryFailure(err)) throw err;
+      stdout = err.stdout;
+    }
+    return parseAudit(stdout.toString());
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
 }
 
 console.log("check-stale-overrides: testing each override without itself\n");
+const current = auditTree(pkg);
 console.log(
-  report(names.map((name) => ({ name, advisories: auditWithout(name) }))),
+  report(
+    names.map((name) => ({
+      name,
+      introduced: introducedAdvisories(
+        current,
+        auditTree(withoutOverride(pkg, name)),
+      ),
+    })),
+  ),
 );
