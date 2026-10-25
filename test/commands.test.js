@@ -29,6 +29,12 @@ test("sudo returns the classic lecture and incident report", () => {
   );
 });
 
+test("sudo's opening sentence is one line, wrapped by the card not the text", () => {
+  // Real sudo breaks this sentence for an 80-column tty. The card is narrower,
+  // so a hard break there gets wrapped again and strands a word on its own line.
+  assert.match(reply("sudo"), /local System Administrator\. It usually/);
+});
+
 test("blockFor resolves the static blocks and tolerates a trailing slash only after a directory", () => {
   // Exact matches resolve to their block selectors.
   assert.equal(blockFor("./whoami.sh"), ".whoami");

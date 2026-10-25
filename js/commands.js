@@ -106,8 +106,9 @@ const PRIV = new Set(["su", "doas", "chmod", "chown"]);
 export const HANDLERS = {
   sudo: () =>
     [
-      "We trust you have received the usual lecture from the local System",
-      "Administrator. It usually boils down to these three things:",
+      // One line where real sudo breaks for an 80-column tty: the card is
+      // narrower, and .reply's pre-wrap wraps it at whatever width it has.
+      "We trust you have received the usual lecture from the local System Administrator. It usually boils down to these three things:",
       "",
       "    #1) Respect the privacy of others.",
       "    #2) Think before you type.",
