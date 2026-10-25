@@ -56,10 +56,10 @@ jobs:
       - name: Install npm tooling
         run: npm ci
 
-      # Only chromium, matching the single project in playwright.config.js;
-      # --with-deps pulls the system libraries the browser needs on the runner.
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+      # Chromium and WebKit, matching the projects in playwright.config.js;
+      # --with-deps pulls the system libraries the browsers need on the runner.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium webkit
 
       # playwright.config.js starts `python3 -m http.server` itself (python3 is
       # preinstalled on ubuntu-latest), mirroring the local dev server.

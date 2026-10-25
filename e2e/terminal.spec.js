@@ -47,9 +47,24 @@ test("grows the input width as it is typed", async ({ page }) => {
   await input.fill("x".repeat(60));
   const wide = (await input.boundingBox()).width;
 
-  // Whether via field-sizing (Chrome) or the ghost-span fallback, the field
-  // must widen with its content so the block cursor trails the text.
+  // The ghost-span measurement must widen the field with its content so the
+  // block cursor trails the text.
   expect(wide).toBeGreaterThan(narrow);
+});
+
+test("the input never scrolls its own text out of view", async ({ page }) => {
+  await page.goto("/");
+  const input = page.locator(".cmd-input");
+  await input.click();
+  await page.keyboard.type("help");
+
+  // WebKit keeps room for the caret after the last glyph; a field sized to the
+  // bare text scrolls by that much and clips the first letter.
+  const fit = await input.evaluate((el) => ({
+    scrollLeft: el.scrollLeft,
+    overflow: el.scrollWidth - el.clientWidth,
+  }));
+  expect(fit).toEqual({ scrollLeft: 0, overflow: 0 });
 });
 
 test("clicking the terminal focuses the input", async ({ page }) => {

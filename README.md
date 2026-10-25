@@ -110,13 +110,13 @@ functions all 100%); the two DOM-glue modules are excluded from that accounting
 because their paint-dependent half is covered by Playwright, not `node --test`.
 Layout- and paint-dependent behaviour jsdom can't model — the frozen screen
 height, the input growing with its content, click-to-focus and the toggle
-actually repainting the page — is covered by Playwright browser smoke tests. Those run separately (they
-download a browser, so they never gate a deploy) on pull requests and pushes to
+actually repainting the page — is covered by Playwright browser smoke tests, in Chromium and WebKit. Those run separately (they
+download browsers, so they never gate a deploy) on pull requests and pushes to
 `main` via the [`e2e` workflow](.github/workflows/e2e.yml). To run them by hand
 (the config starts python's `http.server` itself and reuses a running one):
 
 ```bash
-npx playwright install chromium   # one-time browser download
+npx playwright install chromium webkit   # one-time browser download
 npm run test:e2e
 ```
 

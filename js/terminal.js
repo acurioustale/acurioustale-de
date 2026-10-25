@@ -44,30 +44,27 @@ if (last && window.matchMedia && window.matchMedia("(pointer: fine)").matches) {
 
   // Measure text using a hidden span to accurately account for the rendered
   // pixel width of emojis and complex characters, which String.length
-  // (UTF-16 code units) gets wrong. Modern browsers that support
-  // field-sizing: content handle this natively via CSS, so the ghost element
-  // and its forced-layout read are only set up as a fallback.
-  let size = function () {};
-  if (typeof CSS === "undefined" || !CSS.supports("field-sizing", "content")) {
-    const ghost = document.createElement("span");
-    ghost.className = "cmd-input";
-    ghost.style.position = "absolute";
-    ghost.style.visibility = "hidden";
-    ghost.style.whiteSpace = "pre";
-    ghost.style.width = "auto";
-    ghost.style.maxWidth = "none";
-    document.body.appendChild(ghost);
+  // (UTF-16 code units) gets wrong. Not field-sizing: content, which sizes the
+  // field to the bare text: WebKit keeps room for the caret past the last
+  // glyph, so a field that tight scrolls its text left and clips the first
+  // letter. The ghost copies the field's font rather than its class, so
+  // .cmd-input still names the one real input.
+  const ghost = document.createElement("span");
+  ghost.style.font = window.getComputedStyle(input).font;
+  ghost.style.position = "absolute";
+  ghost.style.visibility = "hidden";
+  ghost.style.whiteSpace = "pre";
+  document.body.appendChild(ghost);
 
-    // Grow the field with its content so the block cursor trails the text.
-    size = function () {
-      ghost.textContent = input.value;
-      // Add 1px slack to prevent sub-pixel rounding from clipping the caret
-      input.style.width =
-        Math.ceil(ghost.getBoundingClientRect().width) + 1 + "px";
-    };
-    size();
-    input.addEventListener("input", size);
+  // Grow the field with its content so the block cursor trails the text.
+  // Round up, then add the caret's 2px so the field never has to scroll.
+  function size() {
+    ghost.textContent = input.value;
+    input.style.width =
+      Math.ceil(ghost.getBoundingClientRect().width) + 2 + "px";
   }
+  size();
+  input.addEventListener("input", size);
 
   // Freeze the screen at its boot height so command history scrolls inside
   // the window instead of growing it. Measured with the scrollback hidden and

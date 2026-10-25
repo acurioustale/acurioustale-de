@@ -85,8 +85,7 @@ export async function loadModule(
     };
 
   // The browser modules read these as bare identifiers (window.*, document,
-  // localStorage). Leave CSS unset so terminal.js exercises its ghost-span
-  // width fallback rather than the field-sizing path.
+  // localStorage). CSS is left unset, as jsdom has none.
   global.window = window;
   global.document = window.document;
   global.localStorage = window.localStorage;
