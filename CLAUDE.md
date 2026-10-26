@@ -49,7 +49,7 @@ npm run lint                  # lint JS, JSON, CSS and Markdown (ESLint, styleli
 npm run format                # Prettier write across the repo (format:check verifies; used by CI)
 npm test                      # run unit tests (node --test)
 npm run coverage              # unit tests + coverage thresholds (the gate CI enforces)
-npm run test:e2e              # run browser smoke tests (Playwright, chromium; separate from CI gate)
+npm run test:e2e              # run browser smoke tests (Playwright, chromium + webkit; separate from CI gate)
 npm run links                 # check links locally (lychee, separate from CI gate)
 npm run check:csp             # CSP guard: inline-script hashes, and meta/.htaccess agreement
 npm run check:og              # og-image guard: the file matches the og: metas it advertises
@@ -95,7 +95,7 @@ are the only hard requirements.
 Link checking, browser smoke tests and dependency advisories are separate and
 non-gating: the `links` workflow runs lychee and the security.txt expiry guard
 on PRs and weekly; the `e2e`
-workflow runs the Playwright specs (a browser download) on PRs and pushes to
+workflow runs the Playwright specs (Chromium and WebKit downloads) on PRs and pushes to
 `main`; the `audit` workflow runs `npm audit` on PRs that change the dependency
 tree and weekly. Deploys gate only on `validate`.
 

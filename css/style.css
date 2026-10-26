@@ -317,7 +317,7 @@ a:focus-visible {
 }
 
 /* The real prompt input, injected by JS as progressive enhancement. It grows
-   with its content (width set inline, in ch) so the trailing .cursor block sits
+   with its content (width set inline, in px) so the trailing .cursor block sits
    right after the text. The native caret is hidden so the blinking block stays
    the only cursor in every state — focusing the field doesn't swap its look. */
 .cmd-input {
@@ -334,16 +334,6 @@ a:focus-visible {
   color: var(--cmd);
   font: inherit;
   caret-color: transparent;
-}
-
-/* Modern browsers: let the engine size the input to its content natively,
-   avoiding the JS ghost-element reflow path entirely. The width: 0 / JS path
-   above remains the fallback for browsers that don't support field-sizing. */
-@supports (field-sizing: content) {
-  .cmd-input {
-    width: auto;
-    field-sizing: content;
-  }
 }
 
 .cmd-input:focus {
