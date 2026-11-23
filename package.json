@@ -29,17 +29,17 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@eslint/json": "^2.1.1",
-    "@playwright/test": "^1.65.0",
+    "@playwright/test": "^1.65.1",
     "eslint": "^10.15.0",
     "eslint-plugin-html": "^8.2.1",
-    "fast-check": "^4.10.2",
+    "fast-check": "^4.10.3",
     "globals": "^17.14.0",
     "jsdom": "^30.1.3",
-    "markdownlint-cli2": "^0.24.1",
+    "markdownlint-cli2": "^0.24.2",
     "prettier": "^3.10.1",
     "stylelint": "^18.1.0",
     "stylelint-config-standard": "^41.1.0",
     "svgo": "^4.0.1",
-    "vnu-jar": "^26.11.9"
+    "vnu-jar": "^26.11.20"
   }
 }
